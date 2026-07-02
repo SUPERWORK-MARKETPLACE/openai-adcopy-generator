@@ -63,12 +63,27 @@ func TestInspectRejectsDRM(t *testing.T) {
 	}
 }
 
+func TestInspectRejectsEncryptedCFB(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "encrypted.xlsx")
+	if err := os.WriteFile(p, append([]byte{0xD0, 0xCF, 0x11, 0xE0}, []byte("fake cfb")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Inspect(p)
+	if err == nil || !strings.Contains(err.Error(), "암호화") {
+		t.Fatalf("want encrypted-CFB error, got %v", err)
+	}
+	if strings.Contains(err.Error(), "DRM") {
+		t.Fatalf("CFB error must be distinguishable from DRM error, got %v", err)
+	}
+}
+
 func TestInspectRejectsNonZip(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "junk.xlsx")
 	if err := os.WriteFile(p, []byte("hello world not a zip"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Inspect(p); err == nil {
-		t.Fatal("want error for non-zip file")
+	_, err := Inspect(p)
+	if err == nil || !strings.Contains(err.Error(), "xlsx(ZIP) 형식이 아닙니다") {
+		t.Fatalf("want non-zip format error, got %v", err)
 	}
 }
