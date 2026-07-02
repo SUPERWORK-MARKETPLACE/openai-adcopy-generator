@@ -7,3 +7,6 @@ Thumbs.db
 
 # session scratch (progress ledger etc.)
 .superpowers/
+
+# adcopy per-run work folders (created next to input workbooks)
+*.adcopy/
