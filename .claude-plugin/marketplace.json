@@ -1,0 +1,11 @@
+{
+  "name": "nasmedia-tools",
+  "owner": { "name": "nasmedia" },
+  "plugins": [
+    {
+      "name": "adcopy",
+      "source": "./",
+      "description": "ChatGPT 광고 카피 생성 에이전트 (생성→검수→공식 파일 출력)"
+    }
+  ]
+}
