@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"adcopy/internal/model"
+	"adcopy/internal/review"
 	"adcopy/internal/urlcheck"
 	"adcopy/internal/validate"
 	"adcopy/internal/workbook"
@@ -68,6 +69,19 @@ func main() {
 		if !rep.OK {
 			os.Exit(1)
 		}
+	case "review-out":
+		// adcopy review-out <generated.json> -o <review.xlsx>
+		if len(os.Args) != 5 || os.Args[3] != "-o" {
+			usage()
+		}
+		g, err := model.Load(os.Args[2])
+		if err != nil {
+			fail(err)
+		}
+		if err := review.WriteReview(g, os.Args[4]); err != nil {
+			fail(err)
+		}
+		writeJSON(map[string]any{"written": os.Args[4], "adgroups": len(g.Adgroups), "ads": len(g.Ads)})
 	default:
 		usage()
 	}
