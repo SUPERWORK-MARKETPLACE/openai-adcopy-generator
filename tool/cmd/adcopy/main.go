@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"adcopy/internal/export"
 	"adcopy/internal/model"
 	"adcopy/internal/review"
 	"adcopy/internal/urlcheck"
@@ -99,6 +100,26 @@ func main() {
 		if len(res.Problems) > 0 {
 			os.Exit(1)
 		}
+	case "export":
+		// adcopy export <approved.json> -o <final.xlsx>
+		if len(os.Args) != 5 || os.Args[3] != "-o" {
+			usage()
+		}
+		g, err := model.Load(os.Args[2])
+		if err != nil {
+			fail(err)
+		}
+		rep := validate.Validate(g)
+		if !rep.OK {
+			writeJSON(rep)
+			fmt.Fprintln(os.Stderr, "adcopy: 검증 오류가 있어 export를 중단합니다")
+			os.Exit(1)
+		}
+		if err := export.Export(g, os.Args[4]); err != nil {
+			fail(err)
+		}
+		writeJSON(map[string]any{"written": os.Args[4],
+			"campaigns": len(g.Campaigns), "adgroups": len(g.Adgroups), "ads": len(g.Ads)})
 	default:
 		usage()
 	}
