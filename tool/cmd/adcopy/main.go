@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"adcopy/internal/workbook"
 )
 
 const version = "0.1.0"
@@ -15,6 +17,15 @@ func main() {
 	switch os.Args[1] {
 	case "version":
 		writeJSON(map[string]string{"name": "adcopy", "version": version})
+	case "inspect":
+		if len(os.Args) != 3 {
+			usage()
+		}
+		d, err := workbook.Inspect(os.Args[2])
+		if err != nil {
+			fail(err)
+		}
+		writeJSON(d)
 	default:
 		usage()
 	}
