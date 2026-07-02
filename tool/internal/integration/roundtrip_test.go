@@ -121,8 +121,14 @@ func TestRoundTrip(t *testing.T) {
 	if len(ads) != 2 { // header + approved ad only
 		t.Fatalf("ads rows = %d, want 2 (rejected ad excluded)", len(ads))
 	}
+	if ads[1][1] != "초등 영어 반복 훈련이 필요하다면" {
+		t.Fatalf("surviving ad must be the approved KID_01_001's creative, got row %v", ads[1])
+	}
 	ags, _ := out.GetRows("adgroups")
 	if len(ags) != 2 { // header + used adgroup only
 		t.Fatalf("adgroups rows = %d, want 2 (unused adgroup dropped)", len(ags))
+	}
+	if ags[1][1] != "01_훈련앱" {
+		t.Fatalf("surviving adgroup must be 01_훈련앱, got row %v", ags[1])
 	}
 }
