@@ -5,6 +5,15 @@ description: 검수 엑셀 왕복과 최종 파일 출력 절차 — 상태값 �
 
 # 검수 왕복 → 최종 출력
 
+## 0. 바이너리 선택
+
+adcopy CLI 경로 (OS에 맞게 택1):
+- Windows: `${CLAUDE_PLUGIN_ROOT}/bin/adcopy-windows-amd64.exe`
+- macOS(Apple Silicon): `${CLAUDE_PLUGIN_ROOT}/bin/adcopy-darwin-arm64`
+- macOS(Intel): `${CLAUDE_PLUGIN_ROOT}/bin/adcopy-darwin-amd64`
+
+이하 `adcopy`로 표기. 종료 코드: 0 정상 / 1 문제 발견 / 2 실행 오류.
+
 ## 검수 상태값 (운영자가 review.xlsx 드롭다운에서 선택)
 
 | 상태 | finalize 처리 |
@@ -20,6 +29,8 @@ description: 검수 엑셀 왕복과 최종 파일 출력 절차 — 상태값 �
 
 1. `adcopy review-in review.xlsx generated.json` — Problems가 있으면 **중단**하고 목록 보고 (원본과 매칭 안 되는 행·허용 외 상태값 등).
 2. 상태별 처리(위 표). `수정 후 승인` 반영분과 `부분 재생성` 결과물은 다시 `adcopy validate`를 통과해야 한다.
+   - 운영자가 keywords를 수정한 경우: 기존 텍스트와 일치하는 힌트는 원래 origin을 유지하고,
+     운영자가 새로 추가한 힌트는 `customer_data`(사람 제공)로 기록한다.
 3. 승인분만 모아 `approved.json` 작성: campaigns 전체 + 승인 광고가 하나 이상 남은 adgroups + 승인 ads. 승인 광고가 0건인 광고그룹은 제외(고아 그룹 방지).
 4. `adcopy export approved.json -o final.xlsx` (export가 내부적으로 재검증 — 오류 시 중단).
 5. 완료 보고에 반드시 포함:
