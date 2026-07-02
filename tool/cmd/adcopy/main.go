@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"adcopy/internal/model"
+	"adcopy/internal/validate"
 	"adcopy/internal/workbook"
 )
 
@@ -26,6 +28,19 @@ func main() {
 			fail(err)
 		}
 		writeJSON(d)
+	case "validate":
+		if len(os.Args) != 3 {
+			usage()
+		}
+		g, err := model.Load(os.Args[2])
+		if err != nil {
+			fail(err)
+		}
+		rep := validate.Validate(g)
+		writeJSON(rep)
+		if !rep.OK {
+			os.Exit(1)
+		}
 	default:
 		usage()
 	}
