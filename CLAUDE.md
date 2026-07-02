@@ -79,15 +79,19 @@ run:    TBD
 - `(NAS)OpenAI - campaign_workbook_template ... (KB국민카드(샘플)).xlsx` 등 — 통합 워크북
   템플릿. **DRM(매직바이트 `SCDSA...`)으로 암호화되어 코드에서 직접 파싱 불가.** 실제 광고주가
   업로드하는 파일은 표준 OOXML(.xlsx)로 가정한다.
+- `data/오픈AI 광고 세팅용 스프레드 시트 - 캐츠잉글리시.xlsx` — **복호화된 실물 업로드 시트**
+  (표준 OOXML, 파싱 가능). 공식 3시트 컬럼 구조의 기준(golden reference). max_bid 전 행 빈칸.
 
 ---
 
 ## 4. 도메인 모델
 
 ### 역할 & Human-in-the-loop (절대 생략 금지)
-`광고주/대행사` → (정보 제공) → `AI 에이전트` → (생성) → `운영자` → (검수·수정) → `광고주` → (확인·max_bid 입력) → 업로드
-- **AI는 `adgroups`·`ads`를 생성만 한다. 자동 업로드하지 않는다.** 운영자 검수와 광고주 확인,
-  `max_bid` 입력을 거친 뒤에만 최종 파일이 만들어진다.
+`광고주/대행사` → (정보 제공) → `AI 에이전트` → (생성) → `운영자` → (검수·수정) → `광고주` → (확인) → 업로드 → (시스템에서 max_bid 수동 설정)
+- **AI는 `adgroups`·`ads`를 생성만 한다. 자동 업로드하지 않는다.** 운영자 검수와 광고주 확인을
+  거친 뒤에만 최종 파일이 만들어진다.
+- **max_bid는 최종 파일에서 항상 빈칸**(2026-07-02 확정: 값을 넣으면 업로드 오류 발생).
+  업로드 후 광고 시스템에서 운영자가 수동 입력한다.
 
 ### 통합 워크북 시트 구조
 | 구분 | Sheet | 작성 주체 | 역할 | 공식 업로드 |
@@ -106,13 +110,17 @@ run:    TBD
 | 캠페인명 | `campaigns.campaign_name` | 광고주·대행사 입력 |
 | 광고그룹명 | `adgroups.adgroup_name` | AI 생성 |
 | Context Hints | `adgroups.keywords` | AI 생성 → **JSON 배열** |
-| 광고명 | `ads.ad_name` | AI 생성 |
+| 광고명 | `ads.ad_name` | AI 생성 — **실물 시트에 컬럼 없음** → 내부 관리 필드(추적·중복 방지용), 업로드 파일에서 제외 |
 | 제목 | `ads.title` | AI 생성 |
 | 카피 | `ads.copy` | AI 생성 |
 | 랜딩/이미지 URL | `ads.link`, `ads.image_link` | 입력값 자동 연결 (하나라도 없으면 알람) |
-| max_bid | `adgroups.max_bid` | 광고주·대행사 확정 |
+| max_bid | `adgroups.max_bid` | **항상 빈칸** — 업로드 후 시스템에서 수동 입력(값 넣으면 오류) |
 
 - **최종 업로드 파일은 공식 3개 시트(`campaigns` / `adgroups` / `ads`)만** 추출한다.
+- **공식 시트 확정 컬럼**(실물 캐츠잉글리시 시트 기준, §3):
+  - `campaigns`: campaign_name · budget_max · budget_type · launch_date · end_date · objective · target_countries(JSON 배열 문자열, 예 `["KR"]`)
+  - `adgroups`: campaign_name · adgroup_name · max_bid(빈칸) · keywords(JSON 배열 문자열)
+  - `ads`: adgroup_name · title · copy · link · image_link
 - **근거 추적 필드**(검수·설명용, 별도 관리): `source_type`, `source_url`, `source_excerpt`,
   `generation_basis`, `validation_status`, `review_comment`, `confidence_score`.
 
