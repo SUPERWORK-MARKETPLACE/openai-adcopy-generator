@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"adcopy/internal/model"
+	"adcopy/internal/urlcheck"
 	"adcopy/internal/validate"
 	"adcopy/internal/workbook"
 )
@@ -28,6 +30,31 @@ func main() {
 			fail(err)
 		}
 		writeJSON(d)
+	case "checkurls":
+		if len(os.Args) != 3 {
+			usage()
+		}
+		b, err := os.ReadFile(os.Args[2])
+		if err != nil {
+			fail(err)
+		}
+		var in struct {
+			URLs []string `json:"urls"`
+		}
+		if err := json.Unmarshal(b, &in); err != nil {
+			fail(fmt.Errorf("parse %s: %w", os.Args[2], err))
+		}
+		results := urlcheck.Check(in.URLs, 10*time.Second)
+		allOK := true
+		for _, r := range results {
+			if !r.OK {
+				allOK = false
+			}
+		}
+		writeJSON(map[string]any{"ok": allOK, "results": results})
+		if !allOK {
+			os.Exit(1)
+		}
 	case "validate":
 		if len(os.Args) != 3 {
 			usage()
