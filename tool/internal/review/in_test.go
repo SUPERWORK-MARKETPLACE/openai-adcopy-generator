@@ -70,3 +70,36 @@ func TestReadReviewFlagsProblems(t *testing.T) {
 		t.Fatalf("want >=3 problems (unknown ad, bad status, bad keywords), got %v", res.Problems)
 	}
 }
+
+// TestReadReviewSkipsClearedRows reproduces an operator clearing a row's cells
+// in Excel without deleting the row. excelize's GetRows only drops an all-empty
+// row when a later row in the sheet still has content (it pads the gap with a
+// nil row instead of trimming it) — a cleared row with nothing below it is
+// trimmed away on its own and never reaches ReadReview. So this test moves the
+// real ad row down to row 3 and clears row 2 in its place, which reliably
+// reproduces the phantom nil row ReadReview must skip.
+func TestReadReviewSkipsClearedRows(t *testing.T) {
+	g := sampleGenerated()
+	cols := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"}
+	p := writeEditedReview(t, g, func(f *excelize.File) {
+		for _, col := range cols {
+			v, _ := f.GetCellValue("ads_검수", col+"2")
+			f.SetCellValue("ads_검수", col+"3", v)
+		}
+		f.SetCellValue("ads_검수", "I3", model.StatusApproved) // validation_status on the moved real row
+		for _, col := range cols {
+			f.SetCellValue("ads_검수", col+"2", "") // clear row 2 entirely (phantom row, now before the real row)
+		}
+		f.SetCellValue("adgroups_검수", "E2", model.StatusApproved)
+	})
+	res, err := ReadReview(p, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Problems) != 0 {
+		t.Fatalf("unexpected problems: %v", res.Problems)
+	}
+	if len(res.Ads) != 1 {
+		t.Fatalf("want 1 ad (cleared row 2 must be skipped), got %d: %+v", len(res.Ads), res.Ads)
+	}
+}

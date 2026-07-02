@@ -58,6 +58,9 @@ func ReadReview(reviewPath string, g *model.Generated) (*ReviewResult, error) {
 		return nil, err
 	}
 	for rn, row := range agRows {
+		if allCellsEmpty(row) {
+			continue
+		}
 		get := func(h string) string { return cellAt(row, agIdx, h) }
 		ar := AdgroupReview{
 			AdgroupName:      get("adgroup_name"),
@@ -83,6 +86,9 @@ func ReadReview(reviewPath string, g *model.Generated) (*ReviewResult, error) {
 		return nil, err
 	}
 	for rn, row := range adRows {
+		if allCellsEmpty(row) {
+			continue
+		}
 		get := func(h string) string { return cellAt(row, adIdx, h) }
 		ar := AdReview{
 			AdName:           get("ad_name"),
@@ -125,4 +131,16 @@ func cellAt(row []string, idx map[string]int, header string) string {
 		return ""
 	}
 	return row[i]
+}
+
+// allCellsEmpty reports whether every cell in row is blank. GetRows can surface
+// such a row when an operator clears a row's contents in Excel without deleting
+// the row itself (see TestReadReviewSkipsClearedRows).
+func allCellsEmpty(row []string) bool {
+	for _, c := range row {
+		if strings.TrimSpace(c) != "" {
+			return false
+		}
+	}
+	return true
 }
