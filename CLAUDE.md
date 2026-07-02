@@ -59,10 +59,10 @@ LLM은 예측 가능한 실패 패턴을 가진다(조용한 가정, 과설계, 
 
 **명령어 (스캐폴딩 후 확정):**
 ```
-build:  TBD
-test:   TBD
-lint:   TBD
-run:    TBD
+build:  cd tool; powershell -ExecutionPolicy Bypass -File .\build.ps1   # bin/ 3종 크로스컴파일
+test:   cd tool; go test ./...
+lint:   cd tool; go vet ./...
+run:    cd tool; go run ./cmd/adcopy <command>                           # 개발용 직접 실행
 ```
 
 ---
