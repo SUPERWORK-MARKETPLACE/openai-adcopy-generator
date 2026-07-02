@@ -1,0 +1,6 @@
+# Excel lock files
+~$*
+
+# OS cruft
+.DS_Store
+Thumbs.db
