@@ -82,6 +82,23 @@ func main() {
 			fail(err)
 		}
 		writeJSON(map[string]any{"written": os.Args[4], "adgroups": len(g.Adgroups), "ads": len(g.Ads)})
+	case "review-in":
+		// adcopy review-in <review.xlsx> <generated.json>
+		if len(os.Args) != 4 {
+			usage()
+		}
+		g, err := model.Load(os.Args[3])
+		if err != nil {
+			fail(err)
+		}
+		res, err := review.ReadReview(os.Args[2], g)
+		if err != nil {
+			fail(err)
+		}
+		writeJSON(res)
+		if len(res.Problems) > 0 {
+			os.Exit(1)
+		}
 	default:
 		usage()
 	}
