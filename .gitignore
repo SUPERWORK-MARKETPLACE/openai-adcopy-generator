@@ -1,6 +1,8 @@
 # Excel lock files
 ~$*
 
+etc/*
+
 # OS cruft
 .DS_Store
 Thumbs.db
