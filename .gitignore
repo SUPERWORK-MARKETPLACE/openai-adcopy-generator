@@ -5,6 +5,12 @@
 # tests use a de-identified fixture (tool/internal/export/testdata/).
 data/
 
+# local-only ops runbook (internal — not for the public repo)
+docs/runbook-e2e-and-push.md
+
+# internal design/planning docs — kept local only, not for the public repo
+docs/superpowers/
+
 etc/
 
 # OS cruft

@@ -69,7 +69,7 @@ run:    cd tool; go run ./cmd/adcopy <command>                           # 개�
 ## 3. 현재 상태 & 원본 자료
 
 - **상태:** v0.2 구현 완료(Claude Code 플러그인 — 대량 생성 모드 포함). 구조: `tool/`(Go CLI adcopy) ·
-  `bin/`(3종 바이너리) · `skills/`·`commands/`(플러그인) · `.claude-plugin/`(매니페스트). 설계·계획: `docs/superpowers/`.
+  `bin/`(3종 바이너리) · `skills/`·`commands/`(플러그인) · `.claude-plugin/`(매니페스트). 설계·계획 문서는 `docs/superpowers/`에 로컬 보관(저장소 미포함).
 - **원본 문서는 `etc/`에 로컬 보관(저장소 미포함, 2026-07-03 이동)** — 개발요청서 PDF(v2)와
   통합 워크북 템플릿들. DRM(매직바이트 `SCDSA...`)으로 암호화되어 코드에서 직접 파싱 불가하고
   PDF는 CJK 폰트 문제로 텍스트 추출이 깨지므로(이미지 렌더링으로 검토 완료), 핵심 내용은 모두
