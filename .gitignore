@@ -1,7 +1,11 @@
 # Excel lock files
 ~$*
 
-etc/*
+# real advertiser upload workbooks — kept local only, never published.
+# tests use a de-identified fixture (tool/internal/export/testdata/).
+data/
+
+etc/
 
 # OS cruft
 .DS_Store

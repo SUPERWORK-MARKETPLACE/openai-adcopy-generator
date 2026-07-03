@@ -30,9 +30,12 @@ func sampleGenerated() *model.Generated {
 	}
 }
 
-const realSheet = "../../../data/오픈AI 광고 세팅용 스프레드 시트 - 캐츠잉글리시.xlsx"
+// goldenFixture is a de-identified copy of the real decrypted upload sheet:
+// same sheet names + header rows, all cell content redacted to "SAMPLE". The
+// real advertiser workbook is kept out of the repo (see .gitignore: data/).
+const goldenFixture = "testdata/golden_structure.xlsx"
 
-// Golden: exported headers must match the real decrypted upload sheet exactly.
+// Golden: exported headers must match the official upload schema exactly.
 func TestExportMatchesRealSheetStructure(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "final.xlsx")
 	if err := Export(sampleGenerated(), out); err != nil {
@@ -43,9 +46,9 @@ func TestExportMatchesRealSheetStructure(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer got.Close()
-	golden, err := excelize.OpenFile(realSheet)
+	golden, err := excelize.OpenFile(goldenFixture)
 	if err != nil {
-		t.Fatalf("golden real sheet missing: %v", err)
+		t.Fatalf("golden fixture missing: %v", err)
 	}
 	defer golden.Close()
 
