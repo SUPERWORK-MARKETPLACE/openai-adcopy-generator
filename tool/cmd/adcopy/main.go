@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"adcopy/internal/export"
+	"adcopy/internal/merge"
 	"adcopy/internal/model"
 	"adcopy/internal/review"
 	"adcopy/internal/urlcheck"
@@ -70,6 +71,31 @@ func main() {
 		if !rep.OK {
 			os.Exit(1)
 		}
+	case "merge":
+		// adcopy merge -o <merged.json> <chunk.json>...
+		if len(os.Args) < 5 || os.Args[2] != "-o" {
+			usage()
+		}
+		g, err := merge.Merge(os.Args[4:])
+		if err != nil {
+			fail(err)
+		}
+		f, err := os.Create(os.Args[3])
+		if err != nil {
+			fail(err)
+		}
+		enc := json.NewEncoder(f)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(g); err != nil {
+			f.Close()
+			fail(err)
+		}
+		if err := f.Close(); err != nil {
+			fail(err)
+		}
+		writeJSON(map[string]any{"written": os.Args[3],
+			"campaigns": len(g.Campaigns), "adgroups": len(g.Adgroups), "ads": len(g.Ads)})
 	case "review-out":
 		// adcopy review-out <generated.json> -o <review.xlsx>
 		if len(os.Args) != 5 || os.Args[3] != "-o" {
@@ -132,6 +158,7 @@ commands:
   inspect <in.xlsx>                       dump advertiser workbook to JSON
   checkurls <urls.json>                   check URL accessibility
   validate <generated.json>               run format validation rules
+  merge -o <merged.json> <chunk.json>...  merge generation chunk files
   review-out <generated.json> -o <xlsx>   write review workbook
   review-in <review.xlsx> <generated.json> read back review workbook
   export <approved.json> -o <xlsx>        write official 3-sheet upload file`)
