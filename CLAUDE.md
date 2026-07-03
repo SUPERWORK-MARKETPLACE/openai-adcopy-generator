@@ -121,6 +121,9 @@ run:    cd tool; go run ./cmd/adcopy <command>                           # 개�
   - `ads`: adgroup_name · title · copy · link · image_link
 - **근거 추적 필드**(검수·설명용, 별도 관리): `source_type`, `source_url`, `source_excerpt`,
   `generation_basis`, `validation_status`, `review_comment`, `confidence_score`.
+- **정책·검증 제어 필드**(generated.json 전용, 업로드 파일 제외): 최상위 `policy.banned_terms`
+  (공통+SKU별 금지어 병합 목록) · `adgroups[].required_phrases`(SKU별 필수 포함 문구 — 그룹 내
+  전 광고의 `title`+`copy`에 verbatim). validate가 `banned_term`·`required_phrase_missing`로 기계 검사.
 
 ---
 
@@ -140,6 +143,13 @@ run:    cd tool; go run ./cmd/adcopy <command>                           # 개�
 
 - **상품 정보를 바로 카피로 바꾸지 마라.** 대화 맥락을 먼저 구조화한다.
 - **모든 조합을 기계적으로 만들지 마라.** 상품이 **자연스러운 해결책이 되는 맥락만** 선별한다.
+- **페르소나는 (광범위 상품에서) 독립 확장 축이다.** 브리프 핵심 타깃은 seed일 뿐 — 그 상품을
+  자연스럽게 쓰는 사용자군을 추론해 확장한다(카드·통신 등에서 폭발; 단일 서비스는 문제 축에
+  붙어 collinear). SKU×퍼널 격자 위에 페르소나를 얹는다.
+- **breadth 우선(문맥광고).** 필터는 명백히 부자연하거나 정책 제외인 칸만 컷하고 그럴듯한
+  맥락은 남긴다. 품질은 사실 근거·저중복·정책 준수이지 맥락 수 축소가 아니다.
+- **매칭 제외 주제(하드 게이트·추론 금지):** 채무·연체·신용등급·미성년자 발급·도박/사행성·
+  개인 금융 취약성 추정에 걸리는 페르소나·맥락은 생성 제외.
 - **출처 우선순위(충돌 시 상위 우선):** ①법무·심의·정책 → ②광고주 브리프 → ③대표 랜딩 URL →
   ④소재별 랜딩 URL·이미지 내 문구 → ⑤고객 질문·검색 데이터 → ⑥AI 추론.
 
@@ -180,6 +190,8 @@ run:    cd tool; go run ./cmd/adcopy <command>                           # 개�
 |---|---|
 | `title` (제목) | 권장 16~18자 / **최대 24자**. 상품명만 반복 금지. |
 | `copy` (카피) | 권장 32~36자 / **최대 48자**. 제목·동일 혜택 반복 금지. 제공된 사실 내에서만. |
+| 금지어 | 정책 시트의 **공통 금지 + SKU별 금지 표현**. `title`·`copy`·`keywords`에 포함 시 오류. 기계 검사(`policy.banned_terms`). |
+| 필수 포함 문구 | SKU별 필수 문구를 그룹 내 **모든 광고의 `title`+`copy`에 verbatim** 포함. 기계 검사(`adgroup.required_phrases`). |
 | `keywords` (Context Hints) | 광고그룹당 **5~10개 이상**, JSON 배열, 한국어/영어. **수량 채우려 관련성 낮은 힌트 생성 금지.** |
 | 이미지 | 정사각형 PNG/JPG, **1:1**, **640×640 ~ 1200×1200px**, 로고 메인 금지(로고 메인 여부는 AI 판별 후 운영자 확인). |
 | `adgroup_name` | 형식 `상품·SKU_고객유형_상황/문제_의도/메시지`, 3~1,000자, 공백만 구성 금지, **특수문자 가능**(플랫폼 허용 문자 기준 자동 정규화, 형식 검수 대상), 중복 시 순번/고유 코드. |

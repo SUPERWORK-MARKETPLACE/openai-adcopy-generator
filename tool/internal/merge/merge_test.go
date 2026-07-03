@@ -84,3 +84,45 @@ func TestMergeSingleInputPassesThrough(t *testing.T) {
 		t.Fatalf("single-input passthrough failed: %v", err)
 	}
 }
+
+// Policy.banned_terms must survive merge (unioned, order-preserving dedup) —
+// otherwise the bulk-generation path (merge → validate) would silently skip
+// the banned-word check where copy volume is highest.
+func TestMergePropagatesPolicyUnion(t *testing.T) {
+	dir := t.TempDir()
+	c1 := writeChunk(t, dir, "c1.json", &model.Generated{
+		Policy: &model.Policy{BannedTerms: []string{"무조건", "최고"}},
+	})
+	c2 := writeChunk(t, dir, "c2.json", &model.Generated{
+		Policy: &model.Policy{BannedTerms: []string{"최고", "업계 1위"}},
+	})
+	out, err := Merge([]string{c1, c2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Policy == nil {
+		t.Fatal("merged policy must not be nil when chunks carry banned terms")
+	}
+	got := out.Policy.BannedTerms
+	want := []string{"무조건", "최고", "업계 1위"}
+	if len(got) != len(want) {
+		t.Fatalf("banned terms = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("banned terms = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestMergeNoPolicyStaysNil(t *testing.T) {
+	dir := t.TempDir()
+	c1 := writeChunk(t, dir, "c1.json", &model.Generated{})
+	out, err := Merge([]string{c1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Policy != nil {
+		t.Fatalf("no policy in chunks → merged policy nil, got %v", out.Policy)
+	}
+}

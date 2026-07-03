@@ -36,6 +36,8 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 ## 4. 생성 (adcopy:context-expansion, adcopy:copy-rules 스킬 로드 후)
 
 - 맥락 확장 → 광고그룹 → Context Hints → 제목·카피 → URL 연결 순. 상품 정보를 바로 카피로 바꾸지 말 것.
+- **정책 반영:** 정책·참고자료 시트의 공통 금지어를 읽어 SKU별 금지 표현과 병합해 최상위 `policy.banned_terms`를 채운다. SKU별 **필수 포함 문구**는 그 SKU가 속한 각 `adgroup.required_phrases`에 넣는다.
+- **매칭 제외 게이트:** 매칭 제외 주제(채무·연체·신용등급·미성년자 발급·도박·개인 금융 취약성 추정)에 걸리는 페르소나·맥락은 생성 전에 필터한다(context-expansion 정책 게이트).
 - **광고그룹 단위로 생성해 `generated.json`에 누적 저장** (대량 생성 시 컨텍스트 관리). 규모가 크면 광고그룹별 서브에이전트로 분산.
 - 소재별 랜딩 URL이 있으면 `link`에 우선 적용, 없으면 대표 랜딩 URL.
 - 브리프·랜딩·이미지 간 정보가 충돌하는 항목은 생성하지 말고 `validation_status: "광고주 확인 필요"`로 표시.
@@ -44,6 +46,7 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 
 ```json
 {
+  "policy": { "banned_terms": ["무조건 발급", "누구나", "최고", "반드시 절약", "혜택 보장", "업계 1위"] },
   "campaigns": [{
     "campaign_name": "01_학습자료", "budget_max": 25000, "budget_type": "daily",
     "launch_date": "2026-07-01", "end_date": "2026-07-31",
@@ -52,6 +55,7 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
   "adgroups": [{
     "campaign_name": "01_학습자료", "adgroup_name": "01_훈련앱",
     "keywords": [{"text": "초등 영어 앱 추천", "origin": "customer_data"}],
+    "required_phrases": ["주요 이용 조건을 확인하세요"],
     "trace": {"source_type": "브리프", "source_url": "", "source_excerpt": "",
       "generation_basis": "SKU=...; Persona=...; 문제=...; 상황=...; 퍼널=...; 세부의도=...; 메시지=...",
       "confidence_score": 0.9, "validation_status": "", "review_comment": "", "exclusion_reason": ""}
@@ -68,11 +72,14 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 - **`max_bid`는 절대 쓰지 않는다** — 값이 있으면 validate가 오류로 잡는다.
 - `campaigns`는 입력 워크북 값을 그대로 옮긴다(AI가 지어내지 않음).
 - `ad_name` 형식: `캠페인/SKU 코드 + 광고그룹 코드 + 크리에이티브 순번` (예: KID_01_001). 내부 관리용 — 업로드 파일에는 포함되지 않는다.
+- **`policy.banned_terms`**(최상위·optional): 정책 시트의 **공통 금지 표현 + SKU별 금지 표현**을 병합한 전역 문자열 목록. validate가 각 표현(공백 트림)을 **모든 ad의 title·copy와 모든 adgroup의 keyword.text**에서 `strings.Contains`로 찾아 있으면 `banned_term` 오류. 없으면 검사 스킵(하위호환).
+- **`adgroups[].required_phrases`**(optional): 그 SKU의 **필수 포함 문구**. 해당 그룹의 **모든 ad는 `title + " " + copy`에 각 문구를 그대로(verbatim) 포함**해야 한다 — 없으면 `required_phrase_missing` 오류. 없으면 스킵.
 
 ## 6. 자동 검수 루프
 
 1. `adcopy validate generated.json` → `validate-report.json`.
 2. errors가 있으면 해당 항목만 재생성/수정 후 재실행 (최대 3회 반복, 그래도 남으면 해당 항목 제외 + 제외 사유 기록).
+   - `banned_term`(금지어 포함)·`required_phrase_missing`(필수 문구 누락)은 **해당 광고만** 카피를 고쳐(금지어 제거 / 필수 문구 삽입) 재실행한다.
 3. 형식 검증과 별개로 의미 검수(adcopy:copy-rules의 금지 규칙)를 스스로 점검.
 
 ## 7. 검수 워크북 출력·보고
@@ -102,7 +109,7 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 - 슬라이스(퍼널×페르소나×메시지 각도 조합)를 서브에이전트에 **배타적으로 할당**한다 —
   슬라이스가 겹치지 않는 것이 곧 의미 중복 방지 장치다.
 - 각 서브에이전트는 작업 폴더에 `generated-01.json`, `generated-02.json`… 청크를 쓴다
-  (§5 스키마 동일). `campaigns`는 모든 청크에 **입력 워크북 값 그대로 동일하게** 포함한다.
+  (§5 스키마 동일). `campaigns`와 최상위 `policy`(banned_terms)는 모든 청크에 **입력 워크북 값 그대로 동일하게** 포함한다(required_phrases는 각 광고그룹에 실어 보낸다).
 - 각 서브에이전트에 adcopy:context-expansion·adcopy:copy-rules 규칙과 배정 슬라이스,
   브리프 사실 목록을 전달한다. ad_name 순번 충돌 방지를 위해 청크별 접두 코드를 배정한다
   (예: 01번 청크 → `KID_01x_###`).
@@ -113,7 +120,8 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 adcopy merge -o generated.json generated-01.json generated-02.json ...
 adcopy validate generated.json
 ```
-- merge는 campaigns를 이름 기준으로 중복 제거하며 **정의가 다르면 오류로 중단**한다.
+- merge는 campaigns를 이름 기준으로 중복 제거하고 **정의가 다르면 오류로 중단**하며,
+  `policy.banned_terms`를 청크 전체에서 **합집합(순서 보존·중복 제거)**으로 보존한다 — 병합본에서도 금지어 검사가 유지된다.
 - 교차 청크 중복(adgroup_name·ad_name·동일 title+copy)은 validate가 잡는다 —
   오류 항목만 해당 청크 담당 기준으로 수정 후 재병합한다(§6 루프와 동일, 최대 3회).
 

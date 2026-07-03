@@ -21,6 +21,7 @@ func Validate(g *model.Generated) *Report {
 	r := &Report{Errors: []Finding{}, Warnings: []Finding{}}
 	textFindings(g, r)
 	structFindings(g, r)
+	policyFindings(g, r)
 	r.OK = len(r.Errors) == 0
 	return r
 }

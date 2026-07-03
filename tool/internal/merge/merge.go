@@ -11,11 +11,14 @@ import (
 
 // Merge loads chunk files and combines them: campaigns are deduplicated by
 // campaign_name (definitions must be identical across chunks), adgroups/ads
-// are concatenated in input order. Cross-chunk name duplicates are left for
-// validate to catch.
+// are concatenated in input order, and policy.banned_terms are unioned
+// (order-preserving dedup) so the banned-word check survives bulk merge.
+// Cross-chunk name duplicates are left for validate to catch.
 func Merge(paths []string) (*model.Generated, error) {
 	out := &model.Generated{}
 	seen := map[string]model.Campaign{}
+	bannedSeen := map[string]bool{}
+	var banned []string
 	for _, p := range paths {
 		g, err := model.Load(p)
 		if err != nil {
@@ -34,6 +37,17 @@ func Merge(paths []string) (*model.Generated, error) {
 		}
 		out.Adgroups = append(out.Adgroups, g.Adgroups...)
 		out.Ads = append(out.Ads, g.Ads...)
+		if g.Policy != nil {
+			for _, t := range g.Policy.BannedTerms {
+				if !bannedSeen[t] {
+					bannedSeen[t] = true
+					banned = append(banned, t)
+				}
+			}
+		}
+	}
+	if len(banned) > 0 {
+		out.Policy = &model.Policy{BannedTerms: banned}
 	}
 	return out, nil
 }

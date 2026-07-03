@@ -23,6 +23,14 @@ type Generated struct {
 	Campaigns []Campaign `json:"campaigns"`
 	Adgroups  []Adgroup  `json:"adgroups"`
 	Ads       []Ad       `json:"ads"`
+	Policy    *Policy    `json:"policy,omitempty"`
+}
+
+// Policy holds machine-checkable ad-policy rules (charter §6/§7).
+// BannedTerms merges the input policy sheet's shared banned expressions
+// with per-SKU banned expressions into one global list.
+type Policy struct {
+	BannedTerms []string `json:"banned_terms,omitempty"`
 }
 
 type Campaign struct {
@@ -45,7 +53,10 @@ type Adgroup struct {
 	AdgroupName  string    `json:"adgroup_name"`
 	MaxBid       any       `json:"max_bid,omitempty"` // must stay nil — presence is a validation error
 	Keywords     []Keyword `json:"keywords"`
-	Trace        Trace     `json:"trace"`
+	// RequiredPhrases: verbatim phrases every ad in this adgroup must contain
+	// in (title+" "+copy). Empty → check skipped.
+	RequiredPhrases []string `json:"required_phrases,omitempty"`
+	Trace           Trace    `json:"trace"`
 }
 
 type Ad struct {
