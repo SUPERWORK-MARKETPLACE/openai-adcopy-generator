@@ -59,8 +59,8 @@ func TestMergeDedupsIdenticalCampaignsAndConcats(t *testing.T) {
 
 func TestMergeRejectsConflictingCampaign(t *testing.T) {
 	dir := t.TempDir()
-	c1 := camp("01_学習資料")
-	c2 := camp("01_学習資料")
+	c1 := camp("01_학습자료")
+	c2 := camp("01_학습자료")
 	c2.BudgetMax = 99999
 	p1 := writeChunk(t, dir, "g1.json", &model.Generated{Campaigns: []model.Campaign{c1}})
 	p2 := writeChunk(t, dir, "g2.json", &model.Generated{Campaigns: []model.Campaign{c2}})
