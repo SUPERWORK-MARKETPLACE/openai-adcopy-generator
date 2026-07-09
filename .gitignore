@@ -22,3 +22,9 @@ Thumbs.db
 
 # adcopy per-run work folders (created next to input workbooks)
 *.adcopy/
+
+# oh my opencode
+.omc/
+
+# workbooks
+workbooks/
