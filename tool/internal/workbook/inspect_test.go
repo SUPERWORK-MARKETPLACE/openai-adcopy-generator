@@ -52,6 +52,64 @@ func TestInspectDumpsSheets(t *testing.T) {
 	}
 }
 
+// writeTemplateWorkbook mimics the real advertiser template layout:
+// single-cell title/guide rows above the header row, header on row 4.
+func writeTemplateWorkbook(t *testing.T) string {
+	t.Helper()
+	f := excelize.NewFile()
+	f.SetSheetName("Sheet1", "상품·브리프")
+	f.SetCellValue("상품·브리프", "A1", "1. 상품·브리프 정보")
+	f.SetCellValue("상품·브리프", "A2", "상품·SKU별로 1행씩 작성합니다.")
+	for i, h := range []string{"campaign_name", "상품·SKU명", "대표 랜딩 URL"} {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 4)
+		f.SetCellValue("상품·브리프", cell, h)
+	}
+	f.SetCellValue("상품·브리프", "A5", "00_일반도움요청")
+	f.SetCellValue("상품·브리프", "B5", "캐츠잉글리시 무료학습")
+	f.SetCellValue("상품·브리프", "C5", "https://www.catsenglish.net")
+	// Row wider than the header: cell D6 must not be dropped.
+	f.SetCellValue("상품·브리프", "A6", "01_학습자료")
+	f.SetCellValue("상품·브리프", "B6", "영어 훈련앱")
+	f.SetCellValue("상품·브리프", "C6", "https://www.catsenglish.net")
+	f.SetCellValue("상품·브리프", "D6", "비고 텍스트")
+	p := filepath.Join(t.TempDir(), "template.xlsx")
+	if err := f.SaveAs(p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestInspectSkipsPreambleRows(t *testing.T) {
+	d, err := Inspect(writeTemplateWorkbook(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := d.Sheets[0]
+	if len(s.Preamble) != 2 || s.Preamble[0] != "1. 상품·브리프 정보" {
+		t.Fatalf("preamble = %+v, want 2 title/guide rows", s.Preamble)
+	}
+	if len(s.Headers) < 3 || s.Headers[0] != "campaign_name" || s.Headers[2] != "대표 랜딩 URL" {
+		t.Fatalf("headers = %+v, want real header row (row 4)", s.Headers)
+	}
+	if len(s.Rows) != 2 {
+		t.Fatalf("rows = %d, want 2", len(s.Rows))
+	}
+	if s.Rows[0]["상품·SKU명"] != "캐츠잉글리시 무료학습" {
+		t.Errorf("row 1 mismatch: %+v", s.Rows[0])
+	}
+}
+
+func TestInspectKeepsCellsWiderThanHeader(t *testing.T) {
+	d, err := Inspect(writeTemplateWorkbook(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := d.Sheets[0]
+	if s.Rows[1]["D"] != "비고 텍스트" {
+		t.Errorf("wide row cell dropped: %+v", s.Rows[1])
+	}
+}
+
 func TestInspectRejectsDRM(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "drm.xlsx")
 	if err := os.WriteFile(p, []byte("SCDSA fake drm container"), 0o644); err != nil {

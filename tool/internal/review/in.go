@@ -11,19 +11,20 @@ import (
 )
 
 type AdgroupReview struct {
-	AdgroupName      string   `json:"adgroup_name"`
-	ValidationStatus string   `json:"validation_status"`
-	ReviewComment    string   `json:"review_comment"`
-	Keywords         []string `json:"keywords"`
+	AdgroupName string `json:"adgroup_name"`
+	// ReviewStatus: operator decision from the 검수상태 dropdown column.
+	ReviewStatus  string   `json:"review_status"`
+	ReviewComment string   `json:"review_comment"`
+	Keywords      []string `json:"keywords"`
 }
 
 type AdReview struct {
-	AdName           string `json:"ad_name"`
-	AdgroupName      string `json:"adgroup_name"`
-	Title            string `json:"title"`
-	Copy             string `json:"copy"`
-	ValidationStatus string `json:"validation_status"`
-	ReviewComment    string `json:"review_comment"`
+	AdName        string `json:"ad_name"`
+	AdgroupName   string `json:"adgroup_name"`
+	Title         string `json:"title"`
+	Copy          string `json:"copy"`
+	ReviewStatus  string `json:"review_status"`
+	ReviewComment string `json:"review_comment"`
 }
 
 type ReviewResult struct {
@@ -63,15 +64,15 @@ func ReadReview(reviewPath string, g *model.Generated) (*ReviewResult, error) {
 		}
 		get := func(h string) string { return cellAt(row, agIdx, h) }
 		ar := AdgroupReview{
-			AdgroupName:      get("adgroup_name"),
-			ValidationStatus: get("validation_status"),
-			ReviewComment:    get("review_comment"),
+			AdgroupName:   get("adgroup_name"),
+			ReviewStatus:  get(StatusColumnHeader),
+			ReviewComment: get("review_comment"),
 		}
 		if !knownAdgroups[ar.AdgroupName] {
 			res.Problems = append(res.Problems, fmt.Sprintf("adgroups_검수 %d행: 원본에 없는 adgroup_name %q", rn+2, ar.AdgroupName))
 		}
-		if !validStatus[ar.ValidationStatus] {
-			res.Problems = append(res.Problems, fmt.Sprintf("adgroups_검수 %d행: 허용되지 않는 상태값 %q", rn+2, ar.ValidationStatus))
+		if !validStatus[ar.ReviewStatus] {
+			res.Problems = append(res.Problems, fmt.Sprintf("adgroups_검수 %d행: 허용되지 않는 검수상태 %q", rn+2, ar.ReviewStatus))
 		}
 		if kwRaw := get("keywords"); strings.TrimSpace(kwRaw) != "" {
 			if err := json.Unmarshal([]byte(kwRaw), &ar.Keywords); err != nil {
@@ -91,18 +92,18 @@ func ReadReview(reviewPath string, g *model.Generated) (*ReviewResult, error) {
 		}
 		get := func(h string) string { return cellAt(row, adIdx, h) }
 		ar := AdReview{
-			AdName:           get("ad_name"),
-			AdgroupName:      get("adgroup_name"),
-			Title:            get("title"),
-			Copy:             get("copy"),
-			ValidationStatus: get("validation_status"),
-			ReviewComment:    get("review_comment"),
+			AdName:        get("ad_name"),
+			AdgroupName:   get("adgroup_name"),
+			Title:         get("title"),
+			Copy:          get("copy"),
+			ReviewStatus:  get(StatusColumnHeader),
+			ReviewComment: get("review_comment"),
 		}
 		if !knownAds[ar.AdName] {
 			res.Problems = append(res.Problems, fmt.Sprintf("ads_검수 %d행: 원본에 없는 ad_name %q", rn+2, ar.AdName))
 		}
-		if !validStatus[ar.ValidationStatus] {
-			res.Problems = append(res.Problems, fmt.Sprintf("ads_검수 %d행: 허용되지 않는 상태값 %q", rn+2, ar.ValidationStatus))
+		if !validStatus[ar.ReviewStatus] {
+			res.Problems = append(res.Problems, fmt.Sprintf("ads_검수 %d행: 허용되지 않는 검수상태 %q", rn+2, ar.ReviewStatus))
 		}
 		res.Ads = append(res.Ads, ar)
 	}

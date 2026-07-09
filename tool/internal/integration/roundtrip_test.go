@@ -147,9 +147,9 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("precondition: %+v", rep.Errors)
 	}
 
-	// 2. write review workbook.
+	// 2. write review workbook (merging the validation report per row).
 	reviewPath := filepath.Join(dir, "review.xlsx")
-	if err := review.WriteReview(g, reviewPath); err != nil {
+	if err := review.WriteReview(g, validate.Validate(g), reviewPath); err != nil {
 		t.Fatal(err)
 	}
 
@@ -161,17 +161,17 @@ func TestRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// ads_검수 validation_status is column I (9th header); rows start at 2.
+	// ads_검수 검수상태 is column J (10th header); rows start at 2.
 	for i, ad := range g.Ads {
 		status := model.StatusApproved
 		if ad.AdName == rejectedAd {
 			status = model.StatusRejected
 		}
-		f.SetCellValue("ads_검수", fmt.Sprintf("I%d", i+2), status)
+		f.SetCellValue("ads_검수", fmt.Sprintf("J%d", i+2), status)
 	}
-	// adgroups_검수 validation_status is column E (5th header).
+	// adgroups_검수 검수상태 is column F (6th header).
 	for i := range g.Adgroups {
-		f.SetCellValue("adgroups_검수", fmt.Sprintf("E%d", i+2), model.StatusApproved)
+		f.SetCellValue("adgroups_검수", fmt.Sprintf("F%d", i+2), model.StatusApproved)
 	}
 	if err := f.Save(); err != nil {
 		t.Fatal(err)
@@ -190,7 +190,7 @@ func TestRoundTrip(t *testing.T) {
 	// 5. finalize: keep approved ads, drop unused adgroups (mirrors CLI logic).
 	statusByAd := map[string]string{}
 	for _, a := range res.Ads {
-		statusByAd[a.AdName] = a.ValidationStatus
+		statusByAd[a.AdName] = a.ReviewStatus
 	}
 	approved := &model.Generated{Campaigns: g.Campaigns, Policy: g.Policy}
 	usedAdgroups := map[string]bool{}

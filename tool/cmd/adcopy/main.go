@@ -97,15 +97,29 @@ func main() {
 		writeJSON(map[string]any{"written": os.Args[3],
 			"campaigns": len(g.Campaigns), "adgroups": len(g.Adgroups), "ads": len(g.Ads)})
 	case "review-out":
-		// adcopy review-out <generated.json> -o <review.xlsx>
-		if len(os.Args) != 5 || os.Args[3] != "-o" {
+		// adcopy review-out <generated.json> -o <review.xlsx> [--report <validate-report.json>]
+		if (len(os.Args) != 5 && len(os.Args) != 7) || os.Args[3] != "-o" {
 			usage()
 		}
 		g, err := model.Load(os.Args[2])
 		if err != nil {
 			fail(err)
 		}
-		if err := review.WriteReview(g, os.Args[4]); err != nil {
+		var rep *validate.Report
+		if len(os.Args) == 7 {
+			if os.Args[5] != "--report" {
+				usage()
+			}
+			b, err := os.ReadFile(os.Args[6])
+			if err != nil {
+				fail(err)
+			}
+			rep = &validate.Report{}
+			if err := json.Unmarshal(b, rep); err != nil {
+				fail(fmt.Errorf("parse %s: %w", os.Args[6], err))
+			}
+		}
+		if err := review.WriteReview(g, rep, os.Args[4]); err != nil {
 			fail(err)
 		}
 		writeJSON(map[string]any{"written": os.Args[4], "adgroups": len(g.Adgroups), "ads": len(g.Ads)})
@@ -159,7 +173,9 @@ commands:
   checkurls <urls.json>                   check URL accessibility
   validate <generated.json>               run format validation rules
   merge -o <merged.json> <chunk.json>...  merge generation chunk files
-  review-out <generated.json> -o <xlsx>   write review workbook
+  review-out <generated.json> -o <xlsx> [--report <report.json>]
+                                          write review workbook (report: merge
+                                          per-row automatic validation findings)
   review-in <review.xlsx> <generated.json> read back review workbook
   export <approved.json> -o <xlsx>        write official 3-sheet upload file`)
 	os.Exit(2)

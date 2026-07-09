@@ -15,9 +15,12 @@ type WorkbookDump struct {
 }
 
 type SheetDump struct {
-	Name    string              `json:"name"`
-	Headers []string            `json:"headers"`
-	Rows    []map[string]string `json:"rows"`
+	Name string `json:"name"`
+	// Preamble: single-cell title/description rows above the header row
+	// (real advertiser templates put sheet titles and guides there).
+	Preamble []string            `json:"preamble,omitempty"`
+	Headers  []string            `json:"headers"`
+	Rows     []map[string]string `json:"rows"`
 }
 
 func Inspect(path string) (*WorkbookDump, error) {
@@ -37,13 +40,25 @@ func Inspect(path string) (*WorkbookDump, error) {
 			return nil, fmt.Errorf("sheet %s: %w", name, err)
 		}
 		sd := SheetDump{Name: name}
-		for ri, row := range rows {
+		for _, row := range rows {
 			if allEmpty(row) {
 				continue
 			}
 			if sd.Headers == nil {
+				// Real templates put single-cell title/guide rows above the
+				// header row; treat those as preamble, not headers.
+				if nonEmptyCount(row) == 1 && singleCell(row) != "" {
+					sd.Preamble = append(sd.Preamble, singleCell(row))
+					continue
+				}
 				sd.Headers = headerNames(row)
 				continue
+			}
+			// Extend headers with column letters when a data row is wider,
+			// so no cell is silently dropped.
+			for len(sd.Headers) < len(row) {
+				name, _ := excelize.ColumnNumberToName(len(sd.Headers) + 1)
+				sd.Headers = append(sd.Headers, name)
 			}
 			m := map[string]string{}
 			for ci, h := range sd.Headers {
@@ -53,7 +68,6 @@ func Inspect(path string) (*WorkbookDump, error) {
 					m[h] = ""
 				}
 			}
-			_ = ri
 			sd.Rows = append(sd.Rows, m)
 		}
 		dump.Sheets = append(dump.Sheets, sd)
@@ -81,12 +95,27 @@ func checkMagic(path string) error {
 }
 
 func allEmpty(row []string) bool {
+	return nonEmptyCount(row) == 0
+}
+
+func nonEmptyCount(row []string) int {
+	n := 0
 	for _, c := range row {
 		if c != "" {
-			return false
+			n++
 		}
 	}
-	return true
+	return n
+}
+
+// singleCell returns the only non-empty cell of a row (caller ensures count==1).
+func singleCell(row []string) string {
+	for _, c := range row {
+		if c != "" {
+			return c
+		}
+	}
+	return ""
 }
 
 // headerNames fills blank header cells with the Excel column name (A, B, ...).

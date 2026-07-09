@@ -14,7 +14,13 @@ adcopy CLI 경로 (OS에 맞게 택1):
 
 이하 `adcopy`로 표기. 종료 코드: 0 정상 / 1 문제 발견 / 2 실행 오류.
 
-## 검수 상태값 (운영자가 review.xlsx 드롭다운에서 선택)
+## review.xlsx 필드 역할 (혼동 금지)
+
+- `validation_status`: **자동 검수 결과(읽기 전용)** — 형식·정책·사실성 검사 결과와 문제 유형, AI 검수 노트. 운영자가 수정하지 않는다.
+- `검수상태`: **운영자 판정 드롭다운** — 아래 5종. finalize는 이 열만 본다(review-in JSON의 `review_status`).
+- `review_comment`: 운영자·광고주 수정 의견·재생성 사유 기입란.
+
+## 검수 상태값 (운영자가 review.xlsx `검수상태` 드롭다운에서 선택)
 
 | 상태 | finalize 처리 |
 |---|---|
@@ -27,7 +33,7 @@ adcopy CLI 경로 (OS에 맞게 택1):
 
 ## finalize 절차 (순서 고정)
 
-1. `adcopy review-in review.xlsx generated.json` — Problems가 있으면 **중단**하고 목록 보고 (원본과 매칭 안 되는 행·허용 외 상태값 등).
+1. `adcopy review-in review.xlsx generated.json` — Problems가 있으면 **중단**하고 목록 보고 (원본과 매칭 안 되는 행·허용 외 검수상태 값 등). 운영자 판정은 결과 JSON의 `review_status` 필드로 들어온다.
 2. 상태별 처리(위 표). `수정 후 승인` 반영분과 `부분 재생성` 결과물은 다시 `adcopy validate`를 통과해야 한다.
    - 운영자가 keywords를 수정한 경우: 기존 텍스트와 일치하는 힌트는 원래 origin을 유지하고,
      운영자가 새로 추가한 힌트는 `customer_data`(사람 제공)로 기록한다.
@@ -40,6 +46,6 @@ adcopy CLI 경로 (OS에 맞게 택1):
 
 ## 절대 규칙
 
-- 자동 검수는 오류 후보 선별일 뿐 — 승인 권한은 운영자·광고주에게 있다. AI가 상태값을 임의로 채우지 마라 (`광고주 확인 필요` 자동 표시는 예외).
+- 자동 검수는 오류 후보 선별일 뿐 — 승인 권한은 운영자·광고주에게 있다. AI가 `검수상태`(운영자 판정)를 임의로 채우지 마라. `validation_status`(자동 검수 결과)에 "광고주 확인 필요"를 표시하는 것은 AI 몫이다.
 - `max_bid`에 어떤 값도 쓰지 마라.
 - 근거 추적 필드는 review.xlsx까지만 — final.xlsx에는 절대 포함하지 않는다 (export가 보장).

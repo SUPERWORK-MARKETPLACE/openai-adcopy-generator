@@ -3,11 +3,13 @@ package review
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/xuri/excelize/v2"
 
 	"adcopy/internal/model"
+	"adcopy/internal/validate"
 )
 
 func sampleGenerated() *model.Generated {
@@ -35,7 +37,7 @@ func sampleGenerated() *model.Generated {
 
 func TestWriteReviewWorkbook(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "review.xlsx")
-	if err := WriteReview(sampleGenerated(), out); err != nil {
+	if err := WriteReview(sampleGenerated(), nil, out); err != nil {
 		t.Fatal(err)
 	}
 	f, err := excelize.OpenFile(out)
@@ -54,11 +56,16 @@ func TestWriteReviewWorkbook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rows[0][0] != "ad_name" || rows[0][2] != "title" || rows[0][8] != "validation_status" {
+	if rows[0][0] != "ad_name" || rows[0][2] != "title" ||
+		rows[0][8] != "validation_status" || rows[0][9] != StatusColumnHeader || rows[0][10] != "review_comment" {
 		t.Fatalf("ads_검수 headers wrong: %v", rows[0])
 	}
+	// validation_status carries the AI-written auto-check note; 검수상태 starts blank.
 	if rows[1][0] != "KID_01_001" || rows[1][8] != model.StatusNeedsAdvertiser {
 		t.Fatalf("ads_검수 row wrong: %v", rows[1])
+	}
+	if len(rows[1]) > 9 && rows[1][9] != "" {
+		t.Fatalf("검수상태 must start blank, got %q", rows[1][9])
 	}
 	if rows[1][3] != "18" { // title rune count as string
 		t.Errorf("title_글자수 = %q, want 18", rows[1][3])
@@ -80,5 +87,44 @@ func TestWriteReviewWorkbook(t *testing.T) {
 	dvs, err := f.GetDataValidations("ads_검수")
 	if err != nil || len(dvs) == 0 {
 		t.Fatalf("ads_검수 must have a status dropdown, got %v (%v)", dvs, err)
+	}
+	if dvs[0].Sqref != "J2:J2" {
+		t.Errorf("dropdown must sit on the 검수상태 column J, got %q", dvs[0].Sqref)
+	}
+}
+
+// TestWriteReviewMergesValidationFindings: validation_status must show the
+// per-row automatic check results (spec 6-11: 형식·정책·사실성 결과 확인).
+func TestWriteReviewMergesValidationFindings(t *testing.T) {
+	g := sampleGenerated()
+	rep := &validate.Report{
+		Warnings: []validate.Finding{{Entity: "ads", ID: "KID_01_001",
+			Field: "copy", Rule: "copy_len_recommended", Message: "카피 39자 — 권장 32~36자"}},
+	}
+	out := filepath.Join(t.TempDir(), "review.xlsx")
+	if err := WriteReview(g, rep, out); err != nil {
+		t.Fatal(err)
+	}
+	f, err := excelize.OpenFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	rows, err := f.GetRows("ads_검수")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cell := rows[1][8]
+	if !strings.Contains(cell, model.StatusNeedsAdvertiser) ||
+		!strings.Contains(cell, "copy_len_recommended") || !strings.Contains(cell, "경고") {
+		t.Fatalf("validation_status must merge trace note and finding, got %q", cell)
+	}
+	// Row with no findings and no trace note → 통과.
+	agRows, err := f.GetRows("adgroups_검수")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if agRows[1][4] != "통과" {
+		t.Errorf("clean row validation_status = %q, want 통과", agRows[1][4])
 	}
 }
