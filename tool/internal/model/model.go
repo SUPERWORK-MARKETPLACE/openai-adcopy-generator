@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Review status values (charter §7).
@@ -18,6 +19,31 @@ const (
 
 // AllStatuses in dropdown order.
 var AllStatuses = []string{StatusApproved, StatusApprovedEdited, StatusRejected, StatusRegenerate, StatusNeedsAdvertiser}
+
+// FunnelStages are the six fixed purchase-journey tokens (R1). adgroup_name's
+// last slot (or the slot before a numeric dedup suffix) must be one of these.
+var FunnelStages = []string{"문제정의", "제품발견", "비교검토", "단일제품평가", "신청전환", "사용도움"}
+
+// ReviewTriggerTokens: if a merged validation_status cell contains any of
+// these, the operator-decision default must be StatusNeedsAdvertiser (R6).
+var ReviewTriggerTokens = []string{"의미 중복 후보", "경고", StatusNeedsAdvertiser, "길이 초과", "근거 확인 필요", "정책 확인 필요"}
+
+// NeedsAdvertiserDefault reports whether the merged validation_status cell
+// value triggers the default operator decision "광고주 확인 필요".
+// Machine findings merged by review-out carry "경고(rule): msg" / "오류(rule): msg"
+// prefixes; an error-only row must trigger too (it is worse than a warning row),
+// so the "오류(" prefix is matched alongside the R6 trigger tokens.
+func NeedsAdvertiserDefault(mergedCell string) bool {
+	if strings.Contains(mergedCell, "오류(") {
+		return true
+	}
+	for _, tok := range ReviewTriggerTokens {
+		if strings.Contains(mergedCell, tok) {
+			return true
+		}
+	}
+	return false
+}
 
 type Generated struct {
 	Campaigns []Campaign `json:"campaigns"`

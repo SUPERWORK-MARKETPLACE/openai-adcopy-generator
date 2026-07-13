@@ -35,7 +35,7 @@ adcopy CLI 경로 (OS에 맞게 택1):
 
 ## 3. 조건 설정 (운영자 대화)
 
-AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외 퍼널 단계(기본: ①~⑤ 포함, ⑥ 사용·문제 해결은 제외), 단계별 비중, 광고그룹 수, 광고그룹당 카피 수(기본 2~3), **생성 아이디어 개수(목표 카피 수 — 지정 시 §8 대량 생성 모드 판단)**, 검수 엄격도. 운영자가 무응답이면 기본값으로 진행하되 보고에 명시.
+AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외 퍼널 단계(기본: ①~⑤ 포함, ⑥ 사용도움은 제외), 단계별 비중, 광고그룹 수, 광고그룹당 카피 수(기본 2~3), **생성 아이디어 개수(목표 카피 수 — 지정 시 §8 대량 생성 모드 판단)**, 검수 엄격도. 운영자가 무응답이면 기본값으로 진행하되 보고에 명시.
 
 ## 4. 생성 (adcopy:context-expansion, adcopy:copy-rules 스킬 로드 후)
 
@@ -58,14 +58,14 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
     "objective": "Views", "target_countries": ["KR"]
   }],
   "adgroups": [{
-    "campaign_name": "01_학습자료", "adgroup_name": "01_훈련앱",
-    "keywords": [{"text": "초등 영어 앱 추천", "origin": "customer_data"}],
+    "campaign_name": "01_학습자료", "adgroup_name": "훈련앱_초등학부모_반복훈련필요_제품발견",
+    "keywords": [{"text": "초등 영어 앱은 어떤 걸로 시작하면 좋을까?", "origin": "customer_data"}],
     "trace": {"source_type": "브리프", "source_url": "", "source_excerpt": "",
-      "generation_basis": "SKU=...; Persona=...; 문제=...; 상황=...; 퍼널=...; 세부의도=...; 메시지=...",
+      "generation_basis": "SKU=...; Persona=...; 문제=...; 상황=...; 퍼널=제품발견; 세부의도=...; 메시지=...",
       "confidence_score": 0.9, "validation_status": "", "review_comment": "", "exclusion_reason": ""}
   }],
   "ads": [{
-    "ad_name": "KID_01_001", "adgroup_name": "01_훈련앱",
+    "ad_name": "KID_01_001", "adgroup_name": "훈련앱_초등학부모_반복훈련필요_제품발견",
     "title": "...", "copy": "...", "link": "https://...", "image_link": "https://...",
     "trace": { "...": "adgroups와 동일 구조" }
   }]
@@ -73,7 +73,8 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 ```
 
 - `keywords[].origin`: 실제 고객 데이터 기반이면 `customer_data`, AI 추론이면 `ai_inferred` (결과에서 구분 표시 의무).
-- **`trace.validation_status` = AI 자동 검수 결과·노트 필드.** 정보 충돌·근거 부족 시 "광고주 확인 필요", 의미 중복 후보·정책 판단 노트("의미 중복 후보: <ad_name>", "1위 표현 출처 불명확" 등)도 여기에 기록한다. **`trace.review_comment`는 운영자·광고주 기입란 — AI가 채우지 않는다(항상 빈 문자열).**
+- `adgroup_name`은 `상품/SKU_타깃_세부의도_구매여정` 4슬롯 형식 — 마지막 슬롯(중복 순번 숫자 접미 앞)은 퍼널 6개 고정 토큰(문제정의·제품발견·비교검토·단일제품평가·신청전환·사용도움) 중 하나만. `generation_basis`의 `퍼널=` 값도 동일 토큰. validate가 `adgroup_name_format` 규칙으로 경고 검사(차단 아님).
+- **`trace.validation_status` = AI 자동 검수 결과·노트 필드.** 표준 플래그 어휘 6종 — `의미 중복 후보`·`경고`·`광고주 확인 필요`·`길이 초과`·`근거 확인 필요`·`정책 확인 필요` — 로 기록한다. 정보 충돌은 "광고주 확인 필요", 근거 부족은 "근거 확인 필요", 노트는 토큰을 접두로("의미 중복 후보: <ad_name>", "정책 확인 필요: 1위 표현 출처 불명확"). **`trace.review_comment`는 운영자·광고주 기입란 — AI가 채우지 않는다(항상 빈 문자열).**
 - **`max_bid`는 절대 쓰지 않는다** — 값이 있으면 validate가 오류로 잡는다.
 - `campaigns`는 입력 워크북 값을 그대로 옮긴다(AI가 지어내지 않음).
 - `ad_name` 형식: `캠페인/SKU 코드 + 광고그룹 코드 + 크리에이티브 순번` (예: KID_01_001). 내부 관리용 — 업로드 파일에는 포함되지 않는다.
@@ -85,12 +86,12 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 1. `adcopy validate generated.json` → `validate-report.json`.
 2. errors가 있으면 해당 항목만 재생성/수정 후 재실행 (최대 3회 반복, 그래도 남으면 해당 항목 제외 + 제외 사유 기록).
    - `banned_term`(금지어 포함)은 **해당 광고만** 카피를 고쳐(금지어 제거) 재실행한다.
-3. 형식 검증과 별개로 의미 검수(adcopy:copy-rules의 금지 규칙)를 스스로 점검.
+3. 형식 검증과 별개로 의미 검수를 스스로 점검: adcopy:copy-rules의 금지 규칙, 광고그룹 간 Context Hints 중복·범용 문구 반복·힌트 내 여정 의도 혼합(context-expansion 규칙), 동일 광고그룹 내 종결형 분산·CTA형 종결 30% 이하(copy-rules 메시지 다양성).
 
 ## 7. 검수 워크북 출력·보고
 
-1. `adcopy review-out generated.json -o review.xlsx --report validate-report.json` — 리포트를 넘기면 행별 자동 검수 결과(오류·경고 유형)가 `validation_status` 열에 병합된다. 문제 없는 행은 "통과". 운영자 판정은 별도 `검수상태` 드롭다운 열.
-2. 운영자에게 보고: 생성 수량(캠페인/광고그룹/광고), 제외 항목과 사유, `광고주 확인 필요` 건수, 자동 검수 결과 요약, review.xlsx 경로와 다음 단계(엑셀 검수 → `/adcopy:finalize`).
+1. `adcopy review-out generated.json -o review.xlsx --report validate-report.json` — 리포트를 넘기면 행별 자동 검수 결과(오류·경고 유형)가 `validation_status` 열에 병합된다. 문제 없는 행은 "통과". 운영자 판정은 별도 `검수상태` 드롭다운 열. `validation_status`에 플래그 토큰(의미 중복 후보·경고·광고주 확인 필요·길이 초과·근거 확인 필요·정책 확인 필요)이 포함된 행(기계 검사 `오류(...)` 병합 행 포함)은 review-out이 `검수상태` 기본값 "광고주 확인 필요"를 기입한다 — 자동 `무수정 승인` 기입은 없다. 나머지 행의 검수상태는 빈칸.
+2. 운영자에게 보고: 생성 수량(캠페인/광고그룹/광고), 제외 항목과 사유, `광고주 확인 필요` 건수와 검수상태 기본값 자동 기입 건수, 자동 검수 결과 요약, review.xlsx 경로와 다음 단계(엑셀 검수 → `/adcopy:finalize`).
 3. 자동 검수는 **오류 후보 선별일 뿐** — 최종 판단은 운영자·광고주가 한다는 점을 함께 안내.
 
 ## 8. 대량 생성 모드 (목표 카피 수가 큰 경우)
@@ -133,7 +134,8 @@ adcopy validate generated.json
 ### 8-4. 의미 중복 검토 (병합 후 필수)
 
 - 전체 제목·카피 목록만 모아 읽고(500건이어도 수십 KB) **의미가 사실상 같은 문구 후보**를
-  찾는다. 자동 삭제하지 말고 해당 광고의 `trace.validation_status`에 "의미 중복 후보: <상대 ad_name>"을
+  찾는다. **광고그룹 간 Context Hints도 함께 훑어** 다른 그룹과 의미가 겹치거나 범용 문구가
+  반복된 힌트를 후보에 넣는다(완전 동일 문자열은 validate가 경고로 잡는다). 자동 삭제하지 말고 해당 광고의 `trace.validation_status`에 "의미 중복 후보: <상대 ad_name>"을
   기록한다(자동 검수 결과 필드 — review_comment는 운영자용이라 쓰지 않는다). 자동 검수는 후보 선별일 뿐, 제거 판단은 운영자 몫.
 - 목표 강행(8-1의 b)이었다면 로테이션 변형 광고에 `trace.generation_basis`에 `변형=로테이션`을 남긴다.
 

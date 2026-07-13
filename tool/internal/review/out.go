@@ -4,6 +4,8 @@
 //   - validation_status: machine/AI 자동 검수 결과 — 형식·정책·사실성·연결성
 //     검사 결과와 문제 유형을 표시한다. 운영자는 읽기만 한다.
 //   - 검수상태: 운영자 판정 드롭다운 (무수정 승인 등 5종). review-in이 읽는다.
+//     자동 검수 트리거가 있는 행은 기본값 "광고주 확인 필요"를 미리 기입한다(R6).
+//     깨끗한 행은 빈칸 — 자동 무수정 승인은 없다.
 //   - review_comment: 운영자·광고주 수정 의견·재생성 사유 기입란.
 package review
 
@@ -48,8 +50,8 @@ func WriteReview(g *model.Generated, rep *validate.Report, outPath string) error
 		return err
 	}
 
-	writeSummary(f, g)
 	findings := findingsByID(rep)
+	writeSummary(f, g, findings)
 
 	setRow(f, "adgroups_검수", 1, toAny(adgroupHeaders))
 	for i, ag := range g.Adgroups {
@@ -58,10 +60,10 @@ func WriteReview(g *model.Generated, rep *validate.Report, outPath string) error
 		for j, k := range ag.Keywords {
 			texts[j], origins[j] = k.Text, k.Origin
 		}
+		vcell := validationCell(ag.Trace.ValidationStatus, findings["adgroups\x00"+ag.AdgroupName])
 		setRow(f, "adgroups_검수", i+2, []any{
 			ag.CampaignName, ag.AdgroupName, jsonArr(texts), jsonArr(origins),
-			validationCell(ag.Trace.ValidationStatus, findings["adgroups\x00"+ag.AdgroupName]),
-			"", ag.Trace.ReviewComment,
+			vcell, defaultStatus(vcell), ag.Trace.ReviewComment,
 			ag.Trace.SourceType, ag.Trace.SourceURL, ag.Trace.SourceExcerpt,
 			ag.Trace.GenerationBasis, ag.Trace.ConfidenceScore, ag.Trace.ExclusionReason,
 		})
@@ -69,13 +71,13 @@ func WriteReview(g *model.Generated, rep *validate.Report, outPath string) error
 
 	setRow(f, "ads_검수", 1, toAny(adHeaders))
 	for i, ad := range g.Ads {
+		vcell := validationCell(ad.Trace.ValidationStatus, findings["ads\x00"+ad.AdName])
 		setRow(f, "ads_검수", i+2, []any{
 			ad.AdName, ad.AdgroupName,
 			ad.Title, utf8.RuneCountInString(strings.TrimSpace(ad.Title)),
 			ad.Copy, utf8.RuneCountInString(strings.TrimSpace(ad.Copy)),
 			ad.Link, ad.ImageLink,
-			validationCell(ad.Trace.ValidationStatus, findings["ads\x00"+ad.AdName]),
-			"", ad.Trace.ReviewComment,
+			vcell, defaultStatus(vcell), ad.Trace.ReviewComment,
 			ad.Trace.SourceType, ad.Trace.SourceURL, ad.Trace.SourceExcerpt,
 			ad.Trace.GenerationBasis, ad.Trace.ConfidenceScore, ad.Trace.ExclusionReason,
 		})
@@ -127,10 +129,20 @@ func validationCell(traceStatus string, findings []string) string {
 	return strings.Join(parts, " | ")
 }
 
-func writeSummary(f *excelize.File, g *model.Generated) {
+// defaultStatus pre-fills the operator decision for one row: a merged
+// validation_status containing a review trigger token (R6) defaults to
+// 광고주 확인 필요; a clean row stays blank (자동 무수정 승인 금지).
+func defaultStatus(mergedCell string) string {
+	if model.NeedsAdvertiserDefault(mergedCell) {
+		return model.StatusNeedsAdvertiser
+	}
+	return ""
+}
+
+func writeSummary(f *excelize.File, g *model.Generated, findings map[string][]string) {
 	needs, excluded := 0, 0
 	for _, ad := range g.Ads {
-		if strings.Contains(ad.Trace.ValidationStatus, model.StatusNeedsAdvertiser) {
+		if model.NeedsAdvertiserDefault(validationCell(ad.Trace.ValidationStatus, findings["ads\x00"+ad.AdName])) {
 			needs++
 		}
 		if ad.Trace.ExclusionReason != "" {
@@ -144,7 +156,8 @@ func writeSummary(f *excelize.File, g *model.Generated) {
 		{"광고 수", len(g.Ads)},
 		{"광고주 확인 필요(광고)", needs},
 		{"제외 사유 있는 광고", excluded},
-		{"안내", "validation_status 열은 자동 검수 결과(읽기 전용)입니다. " +
+		{"안내", "validation_status 열은 자동 검수 결과(읽기 전용)입니다. 확인이 필요한 행은 " +
+			StatusColumnHeader + " 열에 기본값 '" + model.StatusNeedsAdvertiser + "'가 미리 기입되어 있습니다. " +
 			StatusColumnHeader + " 열의 드롭다운에서 판정을 선택하고 review_comment에 의견을 남겨 주세요."},
 		{"상태값", strings.Join(model.AllStatuses, " / ")},
 	}

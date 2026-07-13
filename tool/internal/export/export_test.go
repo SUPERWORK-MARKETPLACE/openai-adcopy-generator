@@ -15,7 +15,7 @@ func sampleGenerated() *model.Generated {
 		Campaigns: []model.Campaign{{CampaignName: "01_학습자료", BudgetMax: 25000,
 			BudgetType: "daily", LaunchDate: "2026-07-01", EndDate: "2026-07-31",
 			Objective: "Views", TargetCountries: []string{"KR"}}},
-		Adgroups: []model.Adgroup{{CampaignName: "01_학습자료", AdgroupName: "01_훈련앱",
+		Adgroups: []model.Adgroup{{CampaignName: "01_학습자료", AdgroupName: "훈련앱_초등학부모_반복훈련필요_제품발견",
 			Keywords: []model.Keyword{
 				{Text: "초등 영어 앱 추천", Origin: "customer_data"},
 				{Text: "영어 단어 어플", Origin: "ai_inferred"},
@@ -23,9 +23,9 @@ func sampleGenerated() *model.Generated {
 				{Text: "영어 훈련 앱", Origin: "ai_inferred"},
 				{Text: "단어 퀴즈 앱", Origin: "ai_inferred"},
 			}}},
-		Ads: []model.Ad{{AdName: "KID_01_001", AdgroupName: "01_훈련앱",
+		Ads: []model.Ad{{AdName: "KID_01_001", AdgroupName: "훈련앱_초등학부모_반복훈련필요_제품발견",
 			Title: "초등 영어 반복 훈련이 필요하다면",
-			Copy:  "6대 영역 재미있고 다양하게 매일 훈련, 무료학습 신청해 보세요",
+			Copy:  "6대 영역 재미있고 다양하게 매일 훈련하는 무료학습 프로그램",
 			Link:  "https://www.example.com/promo", ImageLink: "https://img.example.com/a.png"}},
 	}
 }

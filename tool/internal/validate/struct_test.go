@@ -31,6 +31,41 @@ func TestAdgroupNameRules(t *testing.T) {
 	}
 }
 
+func TestAdgroupNameFormatWarning(t *testing.T) {
+	g := baseGenerated()
+	g.Adgroups[0].AdgroupName = "훈련앱_학부모_문제정의" // 3 slots < 4
+	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
+	r := Validate(g)
+	if !hasRule(r.Warnings, "adgroup_name_format") {
+		t.Fatal("want adgroup_name_format warning for 3 slots")
+	}
+	if hasRule(r.Errors, "adgroup_name_format") {
+		t.Fatal("adgroup_name_format must be a warning, never an error")
+	}
+	g = baseGenerated()
+	g.Adgroups[0].AdgroupName = "훈련앱_초등학부모_반복훈련필요_문제발견" // 고정 토큰 아님
+	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
+	if !hasRule(Validate(g).Warnings, "adgroup_name_format") {
+		t.Fatal("want adgroup_name_format warning for non-fixed funnel token")
+	}
+	g = baseGenerated() // fixture is already 상품/SKU_타깃_세부의도_구매여정
+	if hasRule(Validate(g).Warnings, "adgroup_name_format") {
+		t.Fatal("clean D10-format name must not warn")
+	}
+	g = baseGenerated()
+	g.Adgroups[0].AdgroupName = "훈련앱_초등학부모_반복훈련필요_문제정의_2" // 중복 순번 접미
+	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
+	if hasRule(Validate(g).Warnings, "adgroup_name_format") {
+		t.Fatal("numeric dedup suffix must pass — funnel token judged on previous slot")
+	}
+	g = baseGenerated()
+	g.Adgroups[0].AdgroupName = "훈련앱_학부모_문제정의_2" // 실질 3슬롯 + 순번 접미
+	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
+	if !hasRule(Validate(g).Warnings, "adgroup_name_format") {
+		t.Fatal("numeric suffix must not count as a content slot — want 4-slot warning")
+	}
+}
+
 func TestAdNameRules(t *testing.T) {
 	g := baseGenerated()
 	g.Ads[0].AdName = ""

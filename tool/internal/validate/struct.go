@@ -51,6 +51,9 @@ func structFindings(g *model.Generated, r *Report) {
 		case n < 3 || n > 1000:
 			r.err("adgroups", name, "adgroup_name", "adgroup_name_length", fmt.Sprintf("adgroup_name %d자 — 3~1000자", n))
 		}
+		if strings.TrimSpace(name) != "" {
+			checkAdgroupNameFormat(r, name)
+		}
 		if adgroups[name] {
 			r.err("adgroups", name, "adgroup_name", "adgroup_name_duplicate", "adgroup_name 중복")
 		}
@@ -84,6 +87,45 @@ func structFindings(g *model.Generated, r *Report) {
 			r.err("ads", ad.AdName, "confidence_score", "confidence_range", "confidence_score는 0~1")
 		}
 	}
+}
+
+// checkAdgroupNameFormat enforces the R2 naming structure
+// 상품/SKU_타깃_세부의도_구매여정 as a WARNING only (never blocks export).
+// Split on "_": 4+ slots required; the funnel slot is the last one — or the
+// one before a purely numeric dedup suffix — and must be a fixed R1 token
+// (model.FunnelStages).
+func checkAdgroupNameFormat(r *Report, name string) {
+	slots := strings.Split(name, "_")
+	// A purely numeric dedup suffix is not a content slot — strip it before
+	// the minimum-slot check so 상품_타깃_구매여정_2 still warns.
+	if n := len(slots); n > 1 && isNumericSlot(slots[n-1]) {
+		slots = slots[:n-1]
+	}
+	if len(slots) < 4 {
+		r.warn("adgroups", name, "adgroup_name", "adgroup_name_format",
+			fmt.Sprintf("adgroup_name %d슬롯 — 형식 상품/SKU_타깃_세부의도_구매여정(4슬롯 이상)", len(slots)))
+		return
+	}
+	funnel := slots[len(slots)-1]
+	for _, s := range model.FunnelStages {
+		if funnel == s {
+			return
+		}
+	}
+	r.warn("adgroups", name, "adgroup_name", "adgroup_name_format",
+		fmt.Sprintf("구매여정 슬롯 %q — 고정 토큰(%s) 중 하나여야 합니다", funnel, strings.Join(model.FunnelStages, "·")))
+}
+
+func isNumericSlot(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func checkURL(r *Report, id, field, raw string) {

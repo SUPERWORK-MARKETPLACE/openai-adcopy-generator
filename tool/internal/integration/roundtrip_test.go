@@ -49,24 +49,24 @@ func fullGenerated() *model.Generated {
 			"무조건 발급", "누구나", "최고", "반드시 절약", "혜택 보장", "업계 1위",
 		}},
 
-		// 7 adgroups: 3 SKU × personas × funnel stages (②발견/③비교/⑤신청).
+		// 7 adgroups: 3 SKU × personas × funnel stages (②제품발견/③비교검토/⑤신청전환).
 		Adgroups: []model.Adgroup{
 			// SKU 생활비 혜택 카드
 			{CampaignName: camp, AdgroupName: "life_직장인_교통비_비교검토",
 				Keywords: kw("customer_data", "교통비 카드 비교", "직장인 생활비 카드", "통신 요금 할인 카드", "편의점 혜택 카드", "정기구독 할인 카드", "생활비 카드 추천")},
 			{CampaignName: camp, AdgroupName: "life_자취생_생활비_제품발견",
 				Keywords: kw("ai_inferred", "자취 생활비 절약", "1인가구 카드 추천", "편의점 할인 카드", "통신비 아끼는 법", "혼자 사는 생활비", "자취생 카드")},
-			{CampaignName: camp, AdgroupName: "life_직장인_정기구독_구매신청",
+			{CampaignName: camp, AdgroupName: "life_직장인_정기구독_신청전환",
 				Keywords: kw("ai_inferred", "정기구독 혜택 카드", "구독 요금 할인", "통신 요금 카드", "직장인 정기구독 카드", "생활비 정기결제 카드")},
 			// SKU 온라인 쇼핑 혜택 카드
 			{CampaignName: camp, AdgroupName: "online_맞벌이_온라인쇼핑_비교검토",
 				Keywords: kw("ai_inferred", "온라인 쇼핑 카드 비교", "온라인 결제 혜택", "구독 결제 카드", "맞벌이 카드 추천", "쇼핑 할인 카드")},
-			{CampaignName: camp, AdgroupName: "online_사회초년생_구독결제_구매신청",
+			{CampaignName: camp, AdgroupName: "online_사회초년생_구독결제_신청전환",
 				Keywords: kw("ai_inferred", "구독 결제 카드 신청", "온라인 결제 혜택 카드", "사회초년생 첫 카드", "구독 할인 카드", "온라인 쇼핑 카드")},
 			// SKU 여행·해외결제 혜택 카드
 			{CampaignName: camp, AdgroupName: "travel_해외여행객_해외결제_제품발견",
 				Keywords: kw("customer_data", "해외 결제 카드", "항공 마일리지 카드", "숙박 할인 카드", "해외여행 카드 추천", "해외 결제 수수료")},
-			{CampaignName: camp, AdgroupName: "travel_해외여행객_항공숙박_구매신청",
+			{CampaignName: camp, AdgroupName: "travel_해외여행객_항공숙박_신청전환",
 				Keywords: kw("ai_inferred", "해외 결제 카드 신청", "항공권 할인 카드", "호텔 숙박 혜택 카드", "해외여행 준비 카드", "해외 이용 수수료")},
 		},
 
@@ -90,8 +90,8 @@ func fullGenerated() *model.Generated {
 				Title: "1인가구 생활비 절약 카드",
 				Copy:  "통신 요금과 편의점 혜택으로 매달 생활비를 아껴 보세요",
 				Link:  life, ImageLink: imgL},
-			// life_직장인_정기구독_구매신청
-			{AdName: "KB_L05", AdgroupName: "life_직장인_정기구독_구매신청",
+			// life_직장인_정기구독_신청전환
+			{AdName: "KB_L05", AdgroupName: "life_직장인_정기구독_신청전환",
 				Title: "정기구독 혜택 카드 신청 전에",
 				Copy:  "정기구독과 통신 혜택의 이용 조건을 확인하고 신청해요",
 				Link:  life, ImageLink: imgL},
@@ -104,12 +104,12 @@ func fullGenerated() *model.Generated {
 				Title: "맞벌이 온라인 결제 혜택 정리",
 				Copy:  "매달 쓰는 온라인 결제와 구독을 한 카드로 모아 보세요",
 				Link:  online, ImageLink: imgO},
-			// online_사회초년생_구독결제_구매신청
-			{AdName: "KB_O03", AdgroupName: "online_사회초년생_구독결제_구매신청",
+			// online_사회초년생_구독결제_신청전환
+			{AdName: "KB_O03", AdgroupName: "online_사회초년생_구독결제_신청전환",
 				Title: "첫 카드로 구독 결제 시작하기",
 				Copy:  "구독 결제 혜택과 주요 이용 조건을 확인하고 신청하세요",
 				Link:  online, ImageLink: imgO},
-			{AdName: "KB_O04", AdgroupName: "online_사회초년생_구독결제_구매신청",
+			{AdName: "KB_O04", AdgroupName: "online_사회초년생_구독결제_신청전환",
 				Title: "사회초년생 구독 카드 신청 전에",
 				Copy:  "연회비와 전월 실적 등 이용 조건을 확인하고 신청해요",
 				Link:  online, ImageLink: imgO},
@@ -122,12 +122,12 @@ func fullGenerated() *model.Generated {
 				Title: "해외 결제 수수료 부담된다면",
 				Copy:  "항공과 숙박 결제까지 해외 혜택을 한 카드로 준비해요",
 				Link:  travel, ImageLink: imgT},
-			// travel_해외여행객_항공숙박_구매신청
-			{AdName: "KB_T03", AdgroupName: "travel_해외여행객_항공숙박_구매신청",
+			// travel_해외여행객_항공숙박_신청전환
+			{AdName: "KB_T03", AdgroupName: "travel_해외여행객_항공숙박_신청전환",
 				Title: "해외 결제 카드 신청 전 확인",
 				Copy:  "해외 이용 수수료 등 조건을 확인하고 신청하세요",
 				Link:  travel, ImageLink: imgT},
-			{AdName: "KB_T04", AdgroupName: "travel_해외여행객_항공숙박_구매신청",
+			{AdName: "KB_T04", AdgroupName: "travel_해외여행객_항공숙박_신청전환",
 				Title: "항공·숙박 혜택 카드 신청하기",
 				Copy:  "항공과 숙박 혜택 조건을 확인하고 신청해 보세요",
 				Link:  travel, ImageLink: imgT},

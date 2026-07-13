@@ -15,7 +15,8 @@ import (
 	"adcopy/internal/workbook"
 )
 
-const version = "0.1.0"
+// Keep in sync with .claude-plugin/plugin.json "version".
+const version = "0.4.0"
 
 func main() {
 	if len(os.Args) < 2 {
