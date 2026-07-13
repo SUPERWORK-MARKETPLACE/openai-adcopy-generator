@@ -79,6 +79,10 @@ run:    cd tool; go run ./cmd/adcopy <command>                           # 개�
     **특수문자 가능** 확정, Context Hints 생성 유형 분류 추가.
 - `data/오픈AI 광고 세팅용 스프레드 시트 - 캐츠잉글리시.xlsx` — **복호화된 실물 업로드 시트**
   (표준 OOXML, 파싱 가능). 공식 3시트 컬럼 구조의 기준(golden reference). max_bid 전 행 빈칸.
+- `workbooks/` — 광고주 제공용 통합워크북 템플릿(캐츠잉글리시 v1·v2, 표준 OOXML). **v2가 입력
+  시트 구조의 기준.** v2 변경(2026-07-13): 상품·브리프의 "필수 포함 문구" → **"카피 핵심 반영
+  요소"** — verbatim 필수가 아니라 `/` 구분 **후보군**(§4·§6). `required_phrases` 필드·
+  `required_phrase_missing` 검사는 제거됨.
 
 ---
 
@@ -122,8 +126,10 @@ run:    cd tool; go run ./cmd/adcopy <command>                           # 개�
 - **근거 추적 필드**(검수·설명용, 별도 관리): `source_type`, `source_url`, `source_excerpt`,
   `generation_basis`, `validation_status`, `review_comment`, `confidence_score`.
 - **정책·검증 제어 필드**(generated.json 전용, 업로드 파일 제외): 최상위 `policy.banned_terms`
-  (공통+SKU별 금지어 병합 목록) · `adgroups[].required_phrases`(SKU별 필수 포함 문구 — 그룹 내
-  전 광고의 `title`+`copy`에 verbatim). validate가 `banned_term`·`required_phrase_missing`로 기계 검사.
+  (공통+SKU별 금지어 병합 목록). validate가 `banned_term`으로 기계 검사.
+- **카피 핵심 반영 요소**(워크북 v2, 상품·브리프 시트 — 구 "필수 포함 문구" 대체): SKU별 혜택·조건·
+  특징 키워드/짧은 구문 **후보군**(`/` 구분). 광고별로 상황에 맞는 **1~2개 선택·재구성**(동등 의미
+  허용, verbatim 의무 없음). 기계 검사 아님 — 생성 가이드·의미 검수. 사용 요소는 `generation_basis`에 기록.
 
 ---
 
@@ -191,7 +197,7 @@ run:    cd tool; go run ./cmd/adcopy <command>                           # 개�
 | `title` (제목) | 권장 16~18자 / **최대 24자**. 상품명만 반복 금지. |
 | `copy` (카피) | 권장 32~36자 / **최대 48자**. 제목·동일 혜택 반복 금지. 제공된 사실 내에서만. |
 | 금지어 | 정책 시트의 **공통 금지 + SKU별 금지 표현**. `title`·`copy`·`keywords`에 포함 시 오류. 기계 검사(`policy.banned_terms`). |
-| 필수 포함 문구 | SKU별 필수 문구를 그룹 내 **모든 광고의 `title`+`copy`에 verbatim** 포함. 기계 검사(`adgroup.required_phrases`). |
+| 카피 핵심 반영 요소 | SKU별 **후보군** — 반드시 포함 아님. 광고별 상황에 맞게 **1~2개 선택·재구성**(동등 의미 허용). 기계 검사 없음(생성 가이드·의미 검수). |
 | `keywords` (Context Hints) | 광고그룹당 **5~10개 이상**, JSON 배열, 한국어/영어. **수량 채우려 관련성 낮은 힌트 생성 금지.** |
 | 이미지 | 정사각형 PNG/JPG, **1:1**, **640×640 ~ 1200×1200px**, 로고 메인 금지(로고 메인 여부는 AI 판별 후 운영자 확인). |
 | `adgroup_name` | 형식 `상품·SKU_고객유형_상황/문제_의도/메시지`, 3~1,000자, 공백만 구성 금지, **특수문자 가능**(플랫폼 허용 문자 기준 자동 정규화, 형식 검수 대상), 중복 시 순번/고유 코드. |

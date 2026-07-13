@@ -12,6 +12,7 @@ docs/runbook-e2e-and-push.md
 docs/superpowers/
 
 etc/
+.env
 
 # OS cruft
 .DS_Store

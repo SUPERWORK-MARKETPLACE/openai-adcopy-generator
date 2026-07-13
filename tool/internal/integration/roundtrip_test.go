@@ -16,9 +16,8 @@ import (
 // fullGenerated builds a realistic multi-axis KB국민카드 fixture (all products
 // fictional). It demonstrates the core promise of the agent: a handful of input
 // axes (SKU × persona × 구매 여정 단계) explode into many adgroups and many
-// title/copy sets. It also exercises the new policy validator — a global
-// banned-term list plus per-adgroup required phrases ("이용 조건") on the
-// 구매·신청 단계 groups, all satisfied so the fixture validates clean.
+// title/copy sets. It also exercises the policy validator — a global
+// banned-term list, fully avoided so the fixture validates clean.
 func fullGenerated() *model.Generated {
 	// kw builds a keyword slice with a shared origin.
 	kw := func(origin string, texts ...string) []model.Keyword {
@@ -58,14 +57,12 @@ func fullGenerated() *model.Generated {
 			{CampaignName: camp, AdgroupName: "life_자취생_생활비_제품발견",
 				Keywords: kw("ai_inferred", "자취 생활비 절약", "1인가구 카드 추천", "편의점 할인 카드", "통신비 아끼는 법", "혼자 사는 생활비", "자취생 카드")},
 			{CampaignName: camp, AdgroupName: "life_직장인_정기구독_구매신청",
-				RequiredPhrases: []string{"이용 조건"},
-				Keywords:        kw("ai_inferred", "정기구독 혜택 카드", "구독 요금 할인", "통신 요금 카드", "직장인 정기구독 카드", "생활비 정기결제 카드")},
+				Keywords: kw("ai_inferred", "정기구독 혜택 카드", "구독 요금 할인", "통신 요금 카드", "직장인 정기구독 카드", "생활비 정기결제 카드")},
 			// SKU 온라인 쇼핑 혜택 카드
 			{CampaignName: camp, AdgroupName: "online_맞벌이_온라인쇼핑_비교검토",
 				Keywords: kw("ai_inferred", "온라인 쇼핑 카드 비교", "온라인 결제 혜택", "구독 결제 카드", "맞벌이 카드 추천", "쇼핑 할인 카드")},
 			{CampaignName: camp, AdgroupName: "online_사회초년생_구독결제_구매신청",
-				RequiredPhrases: []string{"이용 조건"},
-				Keywords:        kw("ai_inferred", "구독 결제 카드 신청", "온라인 결제 혜택 카드", "사회초년생 첫 카드", "구독 할인 카드", "온라인 쇼핑 카드")},
+				Keywords: kw("ai_inferred", "구독 결제 카드 신청", "온라인 결제 혜택 카드", "사회초년생 첫 카드", "구독 할인 카드", "온라인 쇼핑 카드")},
 			// SKU 여행·해외결제 혜택 카드
 			{CampaignName: camp, AdgroupName: "travel_해외여행객_해외결제_제품발견",
 				Keywords: kw("customer_data", "해외 결제 카드", "항공 마일리지 카드", "숙박 할인 카드", "해외여행 카드 추천", "해외 결제 수수료")},
@@ -93,7 +90,7 @@ func fullGenerated() *model.Generated {
 				Title: "1인가구 생활비 절약 카드",
 				Copy:  "통신 요금과 편의점 혜택으로 매달 생활비를 아껴 보세요",
 				Link:  life, ImageLink: imgL},
-			// life_직장인_정기구독_구매신청 (RequiredPhrases: 이용 조건)
+			// life_직장인_정기구독_구매신청
 			{AdName: "KB_L05", AdgroupName: "life_직장인_정기구독_구매신청",
 				Title: "정기구독 혜택 카드 신청 전에",
 				Copy:  "정기구독과 통신 혜택의 이용 조건을 확인하고 신청해요",
@@ -107,7 +104,7 @@ func fullGenerated() *model.Generated {
 				Title: "맞벌이 온라인 결제 혜택 정리",
 				Copy:  "매달 쓰는 온라인 결제와 구독을 한 카드로 모아 보세요",
 				Link:  online, ImageLink: imgO},
-			// online_사회초년생_구독결제_구매신청 (RequiredPhrases: 이용 조건)
+			// online_사회초년생_구독결제_구매신청
 			{AdName: "KB_O03", AdgroupName: "online_사회초년생_구독결제_구매신청",
 				Title: "첫 카드로 구독 결제 시작하기",
 				Copy:  "구독 결제 혜택과 주요 이용 조건을 확인하고 신청하세요",
@@ -125,7 +122,7 @@ func fullGenerated() *model.Generated {
 				Title: "해외 결제 수수료 부담된다면",
 				Copy:  "항공과 숙박 결제까지 해외 혜택을 한 카드로 준비해요",
 				Link:  travel, ImageLink: imgT},
-			// travel_해외여행객_항공숙박_구매신청 (no required phrase here)
+			// travel_해외여행객_항공숙박_구매신청
 			{AdName: "KB_T03", AdgroupName: "travel_해외여행객_항공숙박_구매신청",
 				Title: "해외 결제 카드 신청 전 확인",
 				Copy:  "해외 이용 수수료 등 조건을 확인하고 신청하세요",

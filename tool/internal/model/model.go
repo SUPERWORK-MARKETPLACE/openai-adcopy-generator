@@ -53,10 +53,7 @@ type Adgroup struct {
 	AdgroupName  string    `json:"adgroup_name"`
 	MaxBid       any       `json:"max_bid,omitempty"` // must stay nil — presence is a validation error
 	Keywords     []Keyword `json:"keywords"`
-	// RequiredPhrases: verbatim phrases every ad in this adgroup must contain
-	// in (title+" "+copy). Empty → check skipped.
-	RequiredPhrases []string `json:"required_phrases,omitempty"`
-	Trace           Trace    `json:"trace"`
+	Trace        Trace     `json:"trace"`
 }
 
 type Ad struct {
