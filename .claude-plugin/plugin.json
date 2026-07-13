@@ -1,6 +1,6 @@
 {
   "name": "adcopy",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "ChatGPT 광고 대화 맥락·카피 생성 에이전트 — 광고주 워크북에서 광고그룹·Context Hints·제목·카피를 생성하고 검수를 거쳐 공식 업로드 파일을 만든다",
   "author": { "name": "nasmedia" }
 }
