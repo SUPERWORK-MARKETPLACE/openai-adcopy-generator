@@ -160,6 +160,12 @@ func writeSummary(f *excelize.File, g *model.Generated, findings map[string][]st
 			StatusColumnHeader + " 열에 기본값 '" + model.StatusNeedsAdvertiser + "'가 미리 기입되어 있습니다. " +
 			StatusColumnHeader + " 열의 드롭다운에서 판정을 선택하고 review_comment에 의견을 남겨 주세요."},
 		{"상태값", strings.Join(model.AllStatuses, " / ")},
+		{"상태값: " + model.StatusApproved, "그대로 최종 파일에 포함"},
+		{"상태값: " + model.StatusApprovedEdited, "시트 수정본 반영(재검증 후 포함)"},
+		{"상태값: " + model.StatusRejected, "최종 파일에서 제외(재생성 없음)"},
+		{"상태값: " + model.StatusRegenerate, "의견 반영 재생성 후 재검수"},
+		{"상태값: " + model.StatusNeedsAdvertiser, "최종 파일에서 제외 후 확인 대기 목록 보고"},
+		{"상태값: (빈칸)", "미검수로 최종 파일에서 제외"},
 	}
 	for i, r := range rows {
 		setRow(f, "요약", i+1, r)

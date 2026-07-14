@@ -26,7 +26,11 @@ var FunnelStages = []string{"문제정의", "제품발견", "비교검토", "단
 
 // ReviewTriggerTokens: if a merged validation_status cell contains any of
 // these, the operator-decision default must be StatusNeedsAdvertiser (R6).
-var ReviewTriggerTokens = []string{"의미 중복 후보", "경고", StatusNeedsAdvertiser, "길이 초과", "근거 확인 필요", "정책 확인 필요"}
+// 8 tokens — "길이 권장 초과" and "문장 자연성 확인 필요" added by S1 (2026-07-14).
+var ReviewTriggerTokens = []string{
+	"의미 중복 후보", "경고", StatusNeedsAdvertiser, "길이 초과", "근거 확인 필요", "정책 확인 필요",
+	"길이 권장 초과", "문장 자연성 확인 필요",
+}
 
 // NeedsAdvertiserDefault reports whether the merged validation_status cell
 // value triggers the default operator decision "광고주 확인 필요".

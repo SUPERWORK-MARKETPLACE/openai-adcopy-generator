@@ -79,6 +79,12 @@ func TestNeedsAdvertiserDefault(t *testing.T) {
 			t.Errorf("want true for trigger token %q", tok)
 		}
 	}
+	// S1 (2026-07-14): 신규 트리거 토큰 2종은 명시적으로 보장한다.
+	for _, tok := range []string{"길이 권장 초과", "문장 자연성 확인 필요"} {
+		if !NeedsAdvertiserDefault(tok) {
+			t.Errorf("want true for S1 trigger token %q", tok)
+		}
+	}
 	if !NeedsAdvertiserDefault("경고(copy_len_recommended): 카피 30자 — 권장 32~36자") {
 		t.Error("want true for merged cell containing a 경고 finding")
 	}

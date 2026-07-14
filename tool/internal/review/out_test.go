@@ -18,12 +18,13 @@ func sampleGenerated() *model.Generated {
 			BudgetType: "daily", LaunchDate: "2026-07-01", EndDate: "2026-07-31",
 			Objective: "Views", TargetCountries: []string{"KR"}}},
 		Adgroups: []model.Adgroup{{CampaignName: "01_학습자료", AdgroupName: "01_훈련앱",
+			// 검색어형 2/5 = 40% — S2 권장 범위(30~50%) 안.
 			Keywords: []model.Keyword{
 				{Text: "초등 영어 앱 추천", Origin: "customer_data"},
-				{Text: "영어 단어 어플", Origin: "ai_inferred"},
-				{Text: "발음 교정 프로그램", Origin: "ai_inferred"},
-				{Text: "영어 훈련 앱", Origin: "ai_inferred"},
-				{Text: "단어 퀴즈 앱", Origin: "ai_inferred"},
+				{Text: "초등 영어 단어 어플", Origin: "ai_inferred"},
+				{Text: "아이 발음 교정 어떻게 시작할까", Origin: "ai_inferred"},
+				{Text: "매일 영어 훈련 습관 들이려면 뭐가 좋을까", Origin: "ai_inferred"},
+				{Text: "아이가 영어 단어를 자꾸 까먹을 때", Origin: "ai_inferred"},
 			},
 			Trace: model.Trace{SourceType: "브리프", GenerationBasis: "퍼널=제품발견", ConfidenceScore: 0.9}}},
 		Ads: []model.Ad{{AdName: "KID_01_001", AdgroupName: "01_훈련앱",
@@ -95,6 +96,28 @@ func TestWriteReviewWorkbook(t *testing.T) {
 	}
 	if dvs[0].Sqref != "J2:J2" {
 		t.Errorf("dropdown must sit on the 검수상태 column J, got %q", dvs[0].Sqref)
+	}
+
+	// 요약 시트: 상태값 목록 행 + 상태값별 설명 행(5종 + 빈칸) — 항목 3 후속.
+	sumRows, err := f.GetRows("요약")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sumRows) < 8+len(model.AllStatuses)+1 {
+		t.Fatalf("요약 rows = %d, want >= %d (status legend rows)", len(sumRows), 8+len(model.AllStatuses)+1)
+	}
+	if sumRows[7][0] != "상태값" {
+		t.Fatalf("요약 8행 = %q, want 상태값", sumRows[7][0])
+	}
+	for i, st := range model.AllStatuses {
+		row := sumRows[8+i]
+		if row[0] != "상태값: "+st || len(row) < 2 || row[1] == "" {
+			t.Fatalf("요약 %d행 = %v, want %q + 설명", 9+i, row, "상태값: "+st)
+		}
+	}
+	blank := sumRows[8+len(model.AllStatuses)]
+	if blank[0] != "상태값: (빈칸)" || len(blank) < 2 || blank[1] == "" {
+		t.Fatalf("요약 빈칸 상태 설명 행 = %v, want 상태값: (빈칸) + 설명", blank)
 	}
 }
 

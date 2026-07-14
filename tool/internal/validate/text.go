@@ -46,6 +46,14 @@ func textFindings(g *model.Generated, r *Report) {
 			r.warn("ads", ad.AdName, "copy", "copy_len_recommended", fmt.Sprintf("카피 %d자 — 권장 %d~%d자", cn, copyRecLo, copyRecHi))
 		}
 
+		// S4: a Korean copy must be a complete natural sentence — noun-phrase
+		// and conditional-clause endings are flagged. Warning only.
+		if body != "" && hasHangul(body) {
+			if msg := sentenceFormIssue(body); msg != "" {
+				r.warn("ads", ad.AdName, "copy", "copy_sentence_form", msg)
+			}
+		}
+
 		if title != "" && title == body {
 			r.err("ads", ad.AdName, "copy", "copy_equals_title", "카피가 제목과 동일합니다")
 		}
@@ -88,7 +96,7 @@ func textFindings(g *model.Generated, r *Report) {
 			} else {
 				seenHint[key] = ag.AdgroupName
 			}
-			// R3: track search-query-style hints among Korean hints.
+			// R3·S2: track search-query-style hints among Korean hints.
 			if hasHangul(text) {
 				koTotal++
 				if !isSentenceFormHint(text) {
@@ -96,11 +104,12 @@ func textFindings(g *model.Generated, r *Report) {
 				}
 			}
 		}
-		// R3: question/situation-form hints must be the majority per adgroup.
+		// S2: search-form hints should be 40%±10 (30~50%) of Korean hints per
+		// adgroup — question/situation forms carry the rest. Both bounds warn.
 		// Heuristic on Korean hints only (English hints are exempt), warning only.
-		if koTotal > 0 && koSearch*2 > koTotal {
+		if koTotal > 0 && (koSearch*10 < koTotal*3 || koSearch*2 > koTotal) {
 			r.warn("adgroups", ag.AdgroupName, "keywords", "keyword_searchform_ratio",
-				fmt.Sprintf("검색어형 힌트 %d/%d — 질문형·상황형 문장이 과반이어야 합니다", koSearch, koTotal))
+				fmt.Sprintf("검색어형 힌트 %d/%d — 권장 40%%±10(30~50%%)", koSearch, koTotal))
 		}
 		// R5: CTA-style endings (…세요) capped at 30% of copies per adgroup.
 		if total := totalCopies[ag.AdgroupName]; total > 0 {
@@ -122,10 +131,33 @@ func isCTAEnding(body string) bool {
 	return strings.HasSuffix(strings.TrimRight(body, ".!。！ "), "세요")
 }
 
+// sentenceFormIssue reports why a copy fails the complete-sentence rule (S4),
+// or "" if it passes. A trailing ?/! is a complete question/exclamation; after
+// stripping closing punctuation, a 면 ending is a dangling conditional clause,
+// 요/다/까/죠 endings read as complete sentences, anything else is a
+// noun-phrase/incomplete ending.
+func sentenceFormIssue(body string) string {
+	for _, suf := range []string{"?", "？", "!", "！"} {
+		if strings.HasSuffix(body, suf) {
+			return ""
+		}
+	}
+	t := strings.TrimRight(body, ".!。！ ")
+	if strings.HasSuffix(t, "면") {
+		return "조건절 종결 — copy는 완결 문장이어야 합니다"
+	}
+	for _, suf := range []string{"요", "다", "까", "죠"} {
+		if strings.HasSuffix(t, suf) {
+			return ""
+		}
+	}
+	return "명사구·불완전 종결 — copy는 완결 문장이어야 합니다"
+}
+
 // isSentenceFormHint reports whether a hint reads as a question/situation
-// sentence rather than a search-query noun phrase (R3). Heuristic: a question
-// mark, an interrogative word, or a sentence-final ending counts as sentence
-// form. Conservative on purpose — feeds a warning-only per-group ratio.
+// sentence rather than a search-query noun phrase (R3·S2). Heuristic: a
+// question mark, an interrogative word, or a sentence-final ending counts as
+// sentence form. Conservative on purpose — feeds a warning-only per-group ratio.
 func isSentenceFormHint(text string) bool {
 	t := strings.TrimSpace(text)
 	if strings.HasSuffix(t, "?") || strings.HasSuffix(t, "？") {

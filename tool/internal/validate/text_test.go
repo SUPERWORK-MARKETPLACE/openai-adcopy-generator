@@ -22,12 +22,13 @@ func baseGenerated() *model.Generated {
 			BudgetType: "daily", LaunchDate: "2026-07-01", EndDate: "2026-07-31",
 			Objective: "Views", TargetCountries: []string{"KR"}}},
 		Adgroups: []model.Adgroup{{CampaignName: "01_학습자료", AdgroupName: "훈련앱_초등학부모_반복훈련필요_제품발견",
+			// 검색어형 2/5 = 40% — S2 권장 범위(30~50%) 안.
 			Keywords: kw("초등 영어 어떻게 시작할까", "아이 영어 흥미 붙이려면 뭐가 좋을까",
-				"매일 10분 영어 훈련 효과 있을까", "초등 영어 반복 연습 어떻게 해요",
+				"초등 영어 반복 훈련 앱 추천", "초등 영어 단어 암기 앱",
 				"아이가 영어를 자꾸 까먹을 때")}},
 		Ads: []model.Ad{{AdName: "KID_01_001", AdgroupName: "훈련앱_초등학부모_반복훈련필요_제품발견",
 			Title: "초등 영어 반복 훈련이 필요하다면", // 17 runes: recommended band
-			Copy:  "6대 영역 재미있고 다양하게 매일 훈련, 무료 레벨테스트 진단", // 34 runes, non-CTA ending
+			Copy:  "6대 영역을 매일 훈련하고 무료 레벨테스트로 진단할 수 있어요", // 34 runes, complete sentence, non-CTA ending
 			Link:  "https://www.example.com/promo", ImageLink: "https://img.example.com/a.png"}},
 	}
 }
@@ -165,19 +166,50 @@ func TestKeywordDuplicateGlobalScope(t *testing.T) {
 }
 
 func TestKeywordSearchformRatio(t *testing.T) {
-	// 검색어형 과반(3/5) → 경고
-	g := baseGenerated()
-	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 단어 어플 추천", "초등 영어 무료 교재",
-		"아이 영어 어떻게 시작할까", "영어 공부가 막막할 때")
-	if !hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
-		t.Fatal("want keyword_searchform_ratio when search-form hints are the majority")
+	// S2: 검색어형 40%±10(30~50%) 밖이면 양측 모두 경고.
+	// mkHints: 검색어형 search개 + 문장형 sentence개.
+	mkHints := func(search, sentence int) []model.Keyword {
+		var texts []string
+		for i := 0; i < search; i++ {
+			texts = append(texts, fmt.Sprintf("초등 영어 교재 추천 유형%d", i+1))
+		}
+		for i := 0; i < sentence; i++ {
+			texts = append(texts, fmt.Sprintf("아이 영어 %d단계는 어떻게 시작할까", i+1))
+		}
+		return kw(texts...)
 	}
-	// 질문·상황형 과반(3/5) → 경고 없음
+	// 검색어형 1/5 = 20% < 30% → 경고 (하한)
+	g := baseGenerated()
+	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 공부가 막막할 때",
+		"집에서 영어 시작해도 될까", "영어 흥미 붙이려면 뭐가 좋을까", "아이가 영어를 자꾸 까먹을 때")
+	if !hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
+		t.Fatal("want keyword_searchform_ratio when search-form hints are below 30%")
+	}
+	// 포함 경계: 정확히 30%(3/10)·50%(5/10)는 통과, 20%(2/10)·60%(6/10)는 경고
+	for _, tc := range []struct {
+		search, sentence int
+		warn             bool
+	}{{2, 8, true}, {3, 7, false}, {5, 5, false}, {6, 4, true}} {
+		g = baseGenerated()
+		g.Adgroups[0].Keywords = mkHints(tc.search, tc.sentence)
+		got := hasRule(Validate(g).Warnings, "keyword_searchform_ratio")
+		if got != tc.warn {
+			t.Fatalf("search-form %d/%d: warn=%v, want %v", tc.search, tc.search+tc.sentence, got, tc.warn)
+		}
+	}
+	// 검색어형 2/5 = 40% → 경고 없음
 	g = baseGenerated()
 	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 단어 어플 추천",
 		"아이 영어 어떻게 시작할까", "영어 공부가 막막할 때", "집에서 영어 시작해도 될까")
 	if hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
-		t.Fatal("sentence-form majority must not warn")
+		t.Fatal("40% search-form must not warn")
+	}
+	// 검색어형 3/5 = 60% > 50% → 경고 (상한)
+	g = baseGenerated()
+	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 단어 어플 추천", "초등 영어 무료 교재",
+		"아이 영어 어떻게 시작할까", "영어 공부가 막막할 때")
+	if !hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
+		t.Fatal("want keyword_searchform_ratio when search-form hints exceed 50%")
 	}
 	// 영어 힌트는 판정 제외 — 영어만 있으면 경고 없음
 	g = baseGenerated()
@@ -185,6 +217,57 @@ func TestKeywordSearchformRatio(t *testing.T) {
 		"phonics for beginners", "daily english routine", "english reading habit")
 	if hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
 		t.Fatal("English-only hints must be exempt from the ratio check")
+	}
+}
+
+func TestCopySentenceForm(t *testing.T) {
+	msg := func(fs []Finding) string {
+		for _, f := range fs {
+			if f.Rule == "copy_sentence_form" {
+				return f.Message
+			}
+		}
+		return ""
+	}
+	// 명사구 종결 → 경고
+	g := baseGenerated()
+	g.Ads[0].Copy = "무료 레벨테스트와 매일 10분씩 하는 영어 반복 훈련 루틴"
+	if m := msg(Validate(g).Warnings); !strings.Contains(m, "명사구") {
+		t.Fatalf("want 명사구 warning for noun-phrase ending, got %q", m)
+	}
+	// 조건절 종결(…다면) → 경고
+	g = baseGenerated()
+	g.Ads[0].Copy = "매일 10분 훈련으로 아이 영어 습관을 만들어 주고 싶다면"
+	if m := msg(Validate(g).Warnings); !strings.Contains(m, "조건절") {
+		t.Fatalf("want 조건절 warning for conditional-clause ending, got %q", m)
+	}
+	// 완결 문장(…있어요) → 통과 (fixture copy)
+	if hasRule(Validate(baseGenerated()).Warnings, "copy_sentence_form") {
+		t.Fatal("complete sentence (…있어요) must pass")
+	}
+	// 완결 질문(…할까요?) → 통과
+	g = baseGenerated()
+	g.Ads[0].Copy = "우리 아이 영어, 매일 10분 반복 훈련으로 시작해 볼까요?"
+	if hasRule(Validate(g).Warnings, "copy_sentence_form") {
+		t.Fatal("complete question (…?) must pass")
+	}
+	// 마침표 붙은 완결 문장(…세요.) → 통과 (꼬리 구두점 제거 경로)
+	g = baseGenerated()
+	g.Ads[0].Copy = "무료 레벨테스트로 아이 영어 수준을 먼저 확인해보세요."
+	if hasRule(Validate(g).Warnings, "copy_sentence_form") {
+		t.Fatal("sentence ending in …세요. must pass")
+	}
+	// 감탄 종결(…!) → 통과 (조기 통과 경로)
+	g = baseGenerated()
+	g.Ads[0].Copy = "신청 후 7일간 주요 콘텐츠를 무료로 경험할 수 있어요!"
+	if hasRule(Validate(g).Warnings, "copy_sentence_form") {
+		t.Fatal("copy ending in ! must pass")
+	}
+	// 영어 카피는 판정 제외
+	g = baseGenerated()
+	g.Ads[0].Copy = "Start daily English training with a free level test"
+	if hasRule(Validate(g).Warnings, "copy_sentence_form") {
+		t.Fatal("English copy must be exempt")
 	}
 }
 
