@@ -3,6 +3,8 @@ package validate
 import (
 	"strings"
 	"testing"
+
+	"adcopy/internal/model"
 )
 
 func TestAdgroupNameRules(t *testing.T) {
@@ -97,6 +99,51 @@ func TestAdNameRules(t *testing.T) {
 	g.Ads = append(g.Ads, dup)
 	if !hasRule(Validate(g).Errors, "ad_name_duplicate") {
 		t.Fatal("want ad_name_duplicate")
+	}
+}
+
+func TestAdNameFormatWarning(t *testing.T) {
+	// 순번(끝 숫자) 앞 프리픽스는 광고그룹마다 고유해야 한다 — SKU 프리픽스
+	// 하나로 순번 범위만 나눠 그룹을 구분하면(KID_01_001~009 → 그룹 3개) 경고.
+	second := func(g *model.Generated, adName string) {
+		ag := g.Adgroups[0]
+		ag.AdgroupName = "훈련앱_초등학부모_학습앱비교_비교검토"
+		g.Adgroups = append(g.Adgroups, ag)
+		ad := g.Ads[0]
+		ad.AdName = adName
+		ad.AdgroupName = ag.AdgroupName
+		ad.Title = "완전히 다른 두 번째 광고 제목"
+		ad.Copy = "형식 검사를 위해 내용을 완전히 바꾼 두 번째 카피예요"
+		g.Ads = append(g.Ads, ad)
+	}
+	g := baseGenerated()
+	second(g, "KID_01_002") // Ads[0]=KID_01_001과 프리픽스 공유, 그룹은 다름
+	r := Validate(g)
+	if !hasRule(r.Warnings, "ad_name_format") {
+		t.Fatal("want ad_name_format when one prefix spans two adgroups")
+	}
+	if hasRule(r.Errors, "ad_name_format") {
+		t.Fatal("ad_name_format must be a warning, never an error")
+	}
+	g = baseGenerated() // 같은 그룹 안에서는 프리픽스 공유 정상
+	ad := g.Ads[0]
+	ad.AdName = "KID_01_002"
+	ad.Title = "완전히 다른 두 번째 광고 제목"
+	ad.Copy = "형식 검사를 위해 내용을 완전히 바꾼 두 번째 카피예요"
+	g.Ads = append(g.Ads, ad)
+	if hasRule(Validate(g).Warnings, "ad_name_format") {
+		t.Fatal("ads in the same adgroup may share a prefix")
+	}
+	g = baseGenerated() // 그룹마다 다른 프리픽스 — 통과
+	g.Ads[0].AdName = "KID_01A_001"
+	second(g, "KID_01B_001")
+	if hasRule(Validate(g).Warnings, "ad_name_format") {
+		t.Fatal("per-adgroup prefixes must pass")
+	}
+	g = baseGenerated() // creative 순번(끝 숫자) 누락
+	g.Ads[0].AdName = "KID_01_ABC"
+	if !hasRule(Validate(g).Warnings, "ad_name_format") {
+		t.Fatal("want ad_name_format for a name without a trailing creative sequence")
 	}
 }
 

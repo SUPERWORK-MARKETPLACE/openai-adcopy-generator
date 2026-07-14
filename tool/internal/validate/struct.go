@@ -72,11 +72,15 @@ func structFindings(g *model.Generated, r *Report) {
 	}
 
 	adNames := map[string]bool{}
+	adPrefixGroup := map[string]string{} // ad_name prefix(순번 제외) -> first adgroup_name
+	prefixWarned := map[string]bool{}
 	for _, ad := range g.Ads {
 		if strings.TrimSpace(ad.AdName) == "" {
 			r.err("ads", ad.AdName, "ad_name", "ad_name_required", "ad_name이 비어 있습니다")
 		} else if adNames[ad.AdName] {
 			r.err("ads", ad.AdName, "ad_name", "ad_name_duplicate", "ad_name 중복")
+		} else {
+			checkAdNameFormat(r, ad.AdName, ad.AdgroupName, adPrefixGroup, prefixWarned)
 		}
 		adNames[ad.AdName] = true
 		if !adgroups[ad.AdgroupName] {
@@ -137,6 +141,32 @@ func checkAdgroupNameFormat(r *Report, name string) {
 	}
 	r.warn("adgroups", name, "adgroup_name", "adgroup_name_format",
 		fmt.Sprintf("구매여정 슬롯 %q — 고정 토큰(%s) 중 하나여야 합니다", funnel, strings.Join(model.FunnelStages, "·")))
+}
+
+// checkAdNameFormat enforces the ad_name structure 캠페인/SKU 코드 + 광고그룹
+// 코드 + creative 순번 as a WARNING only. The creative sequence is the trailing
+// digit run; the remaining prefix must identify a single adgroup — a prefix
+// shared by two adgroups means the adgroup-code slot is missing (순번 범위로만
+// 그룹을 구분하는 이름, 예: KID_01A_001~009 하나로 그룹 3개를 커버).
+// Warned once per (prefix, extra adgroup) pair to avoid flagging every ad.
+func checkAdNameFormat(r *Report, name, adgroupName string, firstGroup map[string]string, warned map[string]bool) {
+	prefix := strings.TrimRight(name, "0123456789")
+	if prefix == name {
+		r.warn("ads", name, "ad_name", "ad_name_format",
+			"creative 순번(끝 숫자) 없음 — 형식 캠페인/SKU 코드+광고그룹 코드+순번")
+		return
+	}
+	first, seen := firstGroup[prefix]
+	if !seen {
+		firstGroup[prefix] = adgroupName
+		return
+	}
+	if first == adgroupName || warned[prefix+"\x00"+adgroupName] {
+		return
+	}
+	warned[prefix+"\x00"+adgroupName] = true
+	r.warn("ads", name, "ad_name", "ad_name_format",
+		fmt.Sprintf("프리픽스 %q가 광고그룹 %q와(과) 공유됩니다 — 광고그룹 코드로 구분 필요", prefix, first))
 }
 
 func isNumericSlot(s string) bool {

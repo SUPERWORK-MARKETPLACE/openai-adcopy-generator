@@ -74,61 +74,61 @@ func fullGenerated() *model.Generated {
 		// 13 ads across the 7 groups; distinct personas/stages → distinct copy.
 		Ads: []model.Ad{
 			// life_직장인_교통비_비교검토
-			{AdName: "KB_L01", AdgroupName: "life_직장인_교통비_비교검토",
+			{AdName: "KB_LA01", AdgroupName: "life_직장인_교통비_비교검토",
 				Title: "교통비 카드 혜택 비교해 볼까요",
 				Copy:  "교통·통신·편의점 혜택을 한눈에 비교하고 골라 보세요",
 				Link:  life, ImageLink: imgL},
-			{AdName: "KB_L02", AdgroupName: "life_직장인_교통비_비교검토",
+			{AdName: "KB_LA02", AdgroupName: "life_직장인_교통비_비교검토",
 				Title: "생활비 카드 비교가 처음이라면",
 				Copy:  "정기구독과 통신 요금까지 챙기는 혜택을 비교해 보세요",
 				Link:  life, ImageLink: imgL},
 			// life_자취생_생활비_제품발견
-			{AdName: "KB_L03", AdgroupName: "life_자취생_생활비_제품발견",
+			{AdName: "KB_LB01", AdgroupName: "life_자취생_생활비_제품발견",
 				Title: "자취 생활비 아끼는 카드 찾기",
 				Copy:  "편의점과 통신 요금 혜택으로 자취 고정비를 줄여요",
 				Link:  life, ImageLink: imgL},
-			{AdName: "KB_L04", AdgroupName: "life_자취생_생활비_제품발견",
+			{AdName: "KB_LB02", AdgroupName: "life_자취생_생활비_제품발견",
 				Title: "1인가구 생활비 절약 카드",
 				Copy:  "통신 요금과 편의점 혜택으로 매달 생활비를 아껴 보세요",
 				Link:  life, ImageLink: imgL},
 			// life_직장인_정기구독_신청전환
-			{AdName: "KB_L05", AdgroupName: "life_직장인_정기구독_신청전환",
+			{AdName: "KB_LC01", AdgroupName: "life_직장인_정기구독_신청전환",
 				Title: "정기구독 혜택 카드 신청 전에",
 				Copy:  "정기구독과 통신 혜택의 이용 조건을 확인하고 신청해요",
 				Link:  life, ImageLink: imgL},
 			// online_맞벌이_온라인쇼핑_비교검토
-			{AdName: "KB_O01", AdgroupName: "online_맞벌이_온라인쇼핑_비교검토",
+			{AdName: "KB_OA01", AdgroupName: "online_맞벌이_온라인쇼핑_비교검토",
 				Title: "온라인 쇼핑 카드 혜택 비교",
 				Copy:  "온라인 결제와 구독 혜택을 꼼꼼히 비교하고 선택하세요",
 				Link:  online, ImageLink: imgO},
-			{AdName: "KB_O02", AdgroupName: "online_맞벌이_온라인쇼핑_비교검토",
+			{AdName: "KB_OA02", AdgroupName: "online_맞벌이_온라인쇼핑_비교검토",
 				Title: "맞벌이 온라인 결제 혜택 정리",
 				Copy:  "매달 쓰는 온라인 결제와 구독을 한 카드로 모아 보세요",
 				Link:  online, ImageLink: imgO},
 			// online_사회초년생_구독결제_신청전환
-			{AdName: "KB_O03", AdgroupName: "online_사회초년생_구독결제_신청전환",
+			{AdName: "KB_OB01", AdgroupName: "online_사회초년생_구독결제_신청전환",
 				Title: "첫 카드로 구독 결제 시작하기",
 				Copy:  "구독 결제 혜택과 주요 이용 조건을 확인하고 신청하세요",
 				Link:  online, ImageLink: imgO},
-			{AdName: "KB_O04", AdgroupName: "online_사회초년생_구독결제_신청전환",
+			{AdName: "KB_OB02", AdgroupName: "online_사회초년생_구독결제_신청전환",
 				Title: "사회초년생 구독 카드 신청 전에",
 				Copy:  "연회비와 전월 실적 등 이용 조건을 확인하고 신청해요",
 				Link:  online, ImageLink: imgO},
 			// travel_해외여행객_해외결제_제품발견
-			{AdName: "KB_T01", AdgroupName: "travel_해외여행객_해외결제_제품발견",
+			{AdName: "KB_TA01", AdgroupName: "travel_해외여행객_해외결제_제품발견",
 				Title: "해외여행 결제 카드 찾는다면",
 				Copy:  "항공·숙박·해외 결제 혜택을 한 장으로 챙겨 보세요",
 				Link:  travel, ImageLink: imgT},
-			{AdName: "KB_T02", AdgroupName: "travel_해외여행객_해외결제_제품발견",
+			{AdName: "KB_TA02", AdgroupName: "travel_해외여행객_해외결제_제품발견",
 				Title: "해외 결제 수수료 부담된다면",
 				Copy:  "항공과 숙박 결제까지 해외 혜택을 한 카드로 준비해요",
 				Link:  travel, ImageLink: imgT},
 			// travel_해외여행객_항공숙박_신청전환
-			{AdName: "KB_T03", AdgroupName: "travel_해외여행객_항공숙박_신청전환",
+			{AdName: "KB_TB01", AdgroupName: "travel_해외여행객_항공숙박_신청전환",
 				Title: "해외 결제 카드 신청 전 확인",
 				Copy:  "해외 이용 수수료 등 조건을 확인하고 신청하세요",
 				Link:  travel, ImageLink: imgT},
-			{AdName: "KB_T04", AdgroupName: "travel_해외여행객_항공숙박_신청전환",
+			{AdName: "KB_TB02", AdgroupName: "travel_해외여행객_항공숙박_신청전환",
 				Title: "항공·숙박 혜택 카드 신청하기",
 				Copy:  "항공과 숙박 혜택 조건을 확인하고 신청해 보세요",
 				Link:  travel, ImageLink: imgT},
@@ -154,7 +154,7 @@ func TestRoundTrip(t *testing.T) {
 	// 3. operator fills EVERY status cell (no blanks) — reject exactly one ad,
 	//    approve every adgroup. Reject an ad from a 2-ad group so its group
 	//    still has an approved survivor.
-	const rejectedAd = "KB_L01"
+	const rejectedAd = "KB_LA01"
 	f, err := excelize.OpenFile(reviewPath)
 	if err != nil {
 		t.Fatal(err)
@@ -234,7 +234,7 @@ func TestRoundTrip(t *testing.T) {
 	// The rejected ad's creative must not survive in the export.
 	for _, row := range ads[1:] {
 		if len(row) > 1 && row[1] == "교통비 카드 혜택 비교해 볼까요" {
-			// KB_L01's title — allowed only if a different approved ad reused it,
+			// KB_LA01's title — allowed only if a different approved ad reused it,
 			// but titles are unique, so its presence means the reject leaked.
 			t.Fatalf("rejected ad %s leaked into export: %v", rejectedAd, row)
 		}
