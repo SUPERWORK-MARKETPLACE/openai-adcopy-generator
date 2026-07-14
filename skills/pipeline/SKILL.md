@@ -86,7 +86,8 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 1. `adcopy validate generated.json` → `validate-report.json`.
 2. errors가 있으면 해당 항목만 재생성/수정 후 재실행 (최대 3회 반복, 그래도 남으면 해당 항목 제외 + 제외 사유 기록).
    - `banned_term`(금지어 포함)은 **해당 광고만** 카피를 고쳐(금지어 제거) 재실행한다.
-3. 형식 검증과 별개로 의미 검수를 스스로 점검: adcopy:copy-rules의 금지 규칙, 광고그룹 간 Context Hints 중복·범용 문구 반복·힌트 내 여정 의도 혼합(context-expansion 규칙), 동일 광고그룹 내 종결형 분산·CTA형 종결 30% 이하(copy-rules 메시지 다양성).
+3. 형식 검증과 별개로 의미 검수를 스스로 점검: adcopy:copy-rules의 금지 규칙, 광고그룹 간 Context Hints 중복·범용 문구 반복·힌트 내 여정 의도 혼합(context-expansion 규칙 — 중복 금지는 캠페인 무관 전역), 동일 광고그룹 내 종결형 분산·CTA형 종결 30% 이하(copy-rules 메시지 다양성), **그룹별 힌트 유형 카운트 — 질문형·상황형이 과반인지 세어 확인**(미달 그룹은 문장형으로 재작성).
+4. **warnings도 방치하지 마라:** `keyword_searchform_ratio`·`keyword_cross_adgroup_duplicate`·`copy_cta_ratio_30` 경고는 해당 그룹의 힌트·카피를 재작성해 해소한다. `title_len_recommended`/`copy_len_recommended` 경고가 전체 광고의 과반이면 해당 그룹들을 권장 길이에 맞춰 재생성한다. 해소 못 한 경고는 검수 워크북으로 그대로 전달된다(플래그 행 처리).
 
 ## 7. 검수 워크북 출력·보고
 
@@ -134,8 +135,8 @@ adcopy validate generated.json
 ### 8-4. 의미 중복 검토 (병합 후 필수)
 
 - 전체 제목·카피 목록만 모아 읽고(500건이어도 수십 KB) **의미가 사실상 같은 문구 후보**를
-  찾는다. **광고그룹 간 Context Hints도 함께 훑어** 다른 그룹과 의미가 겹치거나 범용 문구가
-  반복된 힌트를 후보에 넣는다(완전 동일 문자열은 validate가 경고로 잡는다). 자동 삭제하지 말고 해당 광고의 `trace.validation_status`에 "의미 중복 후보: <상대 ad_name>"을
+  찾는다. **광고그룹 간 Context Hints도 함께 훑어**(캠페인 무관 전역) 다른 그룹과 의미가 겹치거나 범용 문구가
+  반복된 힌트를 후보에 넣는다(완전 동일·공백만 다른 문자열은 validate가 경고로 잡는다). 자동 삭제하지 말고 해당 광고의 `trace.validation_status`에 "의미 중복 후보: <상대 ad_name>"을
   기록한다(자동 검수 결과 필드 — review_comment는 운영자용이라 쓰지 않는다). 자동 검수는 후보 선별일 뿐, 제거 판단은 운영자 몫.
 - 목표 강행(8-1의 b)이었다면 로테이션 변형 광고에 `trace.generation_basis`에 `변형=로테이션`을 남긴다.
 

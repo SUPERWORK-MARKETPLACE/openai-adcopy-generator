@@ -22,7 +22,9 @@ func baseGenerated() *model.Generated {
 			BudgetType: "daily", LaunchDate: "2026-07-01", EndDate: "2026-07-31",
 			Objective: "Views", TargetCountries: []string{"KR"}}},
 		Adgroups: []model.Adgroup{{CampaignName: "01_학습자료", AdgroupName: "훈련앱_초등학부모_반복훈련필요_제품발견",
-			Keywords: kw("힌트 하나", "힌트 둘", "힌트 셋", "힌트 넷", "힌트 다섯")}},
+			Keywords: kw("초등 영어 어떻게 시작할까", "아이 영어 흥미 붙이려면 뭐가 좋을까",
+				"매일 10분 영어 훈련 효과 있을까", "초등 영어 반복 연습 어떻게 해요",
+				"아이가 영어를 자꾸 까먹을 때")}},
 		Ads: []model.Ad{{AdName: "KID_01_001", AdgroupName: "훈련앱_초등학부모_반복훈련필요_제품발견",
 			Title: "초등 영어 반복 훈련이 필요하다면", // 17 runes: recommended band
 			Copy:  "6대 영역 재미있고 다양하게 매일 훈련, 무료 레벨테스트 진단", // 34 runes, non-CTA ending
@@ -130,31 +132,59 @@ func TestKeywordOriginValidated(t *testing.T) {
 
 func TestKeywordCrossAdgroupDuplicate(t *testing.T) {
 	g := baseGenerated()
+	// 공백만 다른 변형("초등영어" vs "초등 영어")도 중복으로 잡아야 한다.
 	g.Adgroups = append(g.Adgroups, model.Adgroup{
 		CampaignName: "01_학습자료", AdgroupName: "훈련앱_초등학부모_학습시작고민_문제정의",
-		Keywords: kw("힌트 하나 ", "다른 하나", "다른 둘", "다른 셋", "다른 넷")}) // "힌트 하나" dup after trim
+		Keywords: kw("초등영어 어떻게 시작할까", "다른 힌트는 뭐가 좋을까", "셋째 힌트 어떨까",
+			"넷째 힌트 어떨까요", "다섯째 힌트 어떨까요")})
 	if !hasRule(Validate(g).Warnings, "keyword_cross_adgroup_duplicate") {
-		t.Fatal("want keyword_cross_adgroup_duplicate for same hint across groups in one campaign")
+		t.Fatal("want keyword_cross_adgroup_duplicate for whitespace-variant dup across groups")
 	}
 }
 
-func TestKeywordDuplicateScopedToCrossGroupSameCampaign(t *testing.T) {
+func TestKeywordDuplicateGlobalScope(t *testing.T) {
 	// 같은 광고그룹 내부 반복은 이 규칙 대상이 아니다
 	g := baseGenerated()
-	g.Adgroups[0].Keywords = kw("힌트 하나", "힌트 하나", "힌트 셋", "힌트 넷", "힌트 다섯")
+	g.Adgroups[0].Keywords = kw("초등 영어 어떻게 시작할까", "초등 영어 어떻게 시작할까",
+		"셋째 힌트 어떨까", "넷째 힌트 어떨까요", "다섯째 힌트 어떨까요")
 	if hasRule(Validate(g).Warnings, "keyword_cross_adgroup_duplicate") {
 		t.Fatal("in-group repetition must not trigger the cross-group rule")
 	}
-	// 다른 캠페인의 같은 힌트도 대상이 아니다
+	// 범용 문구는 캠페인이 달라도 잡는다(전역 스코프 — R4 범용 문구 반복 금지)
 	g = baseGenerated()
 	g.Campaigns = append(g.Campaigns, model.Campaign{CampaignName: "02_다른캠페인", BudgetMax: 1000,
 		BudgetType: "daily", LaunchDate: "2026-07-01", EndDate: "2026-07-31",
 		Objective: "Views", TargetCountries: []string{"KR"}})
 	g.Adgroups = append(g.Adgroups, model.Adgroup{
 		CampaignName: "02_다른캠페인", AdgroupName: "훈련앱_초등학부모_학습시작고민_문제정의",
-		Keywords: kw("힌트 하나", "다른 하나", "다른 둘", "다른 셋", "다른 넷")})
-	if hasRule(Validate(g).Warnings, "keyword_cross_adgroup_duplicate") {
-		t.Fatal("same hint across different campaigns must not warn")
+		Keywords: kw("초등 영어 어떻게 시작할까", "다른 힌트는 뭐가 좋을까", "셋째 힌트 어떨까",
+			"넷째 힌트 어떨까요", "다섯째 힌트 어떨까요")})
+	if !hasRule(Validate(g).Warnings, "keyword_cross_adgroup_duplicate") {
+		t.Fatal("generic phrase repeated across campaigns must warn (global scope)")
+	}
+}
+
+func TestKeywordSearchformRatio(t *testing.T) {
+	// 검색어형 과반(3/5) → 경고
+	g := baseGenerated()
+	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 단어 어플 추천", "초등 영어 무료 교재",
+		"아이 영어 어떻게 시작할까", "영어 공부가 막막할 때")
+	if !hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
+		t.Fatal("want keyword_searchform_ratio when search-form hints are the majority")
+	}
+	// 질문·상황형 과반(3/5) → 경고 없음
+	g = baseGenerated()
+	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 단어 어플 추천",
+		"아이 영어 어떻게 시작할까", "영어 공부가 막막할 때", "집에서 영어 시작해도 될까")
+	if hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
+		t.Fatal("sentence-form majority must not warn")
+	}
+	// 영어 힌트는 판정 제외 — 영어만 있으면 경고 없음
+	g = baseGenerated()
+	g.Adgroups[0].Keywords = kw("english learning app", "kids english practice",
+		"phonics for beginners", "daily english routine", "english reading habit")
+	if hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
+		t.Fatal("English-only hints must be exempt from the ratio check")
 	}
 }
 
@@ -206,5 +236,20 @@ func TestCopyCtaRatioBoundary(t *testing.T) {
 	}
 	if hasRule(Validate(g).Warnings, "copy_cta_ratio_30") {
 		t.Fatal("exactly 30% CTA must not warn")
+	}
+}
+
+func TestCopyCtaEndingPunctuation(t *testing.T) {
+	// 구두점으로 끝나는 CTA(…세요.)도 CTA로 집계해야 한다.
+	g := baseGenerated()
+	g.Ads[0].Copy = "아이에게 맞는 영어 학습법을 지금 확인해보세요." // 1/1 = 100%
+	if !hasRule(Validate(g).Warnings, "copy_cta_ratio_30") {
+		t.Fatal("want copy_cta_ratio_30 for punctuated CTA ending (…세요.)")
+	}
+	// 질문형(…세요?)은 CTA가 아니다.
+	g = baseGenerated()
+	g.Ads[0].Copy = "아이 영어 학습 시작이 아직도 고민되지 않으세요?"
+	if hasRule(Validate(g).Warnings, "copy_cta_ratio_30") {
+		t.Fatal("question form (…세요?) must not count as CTA")
 	}
 }

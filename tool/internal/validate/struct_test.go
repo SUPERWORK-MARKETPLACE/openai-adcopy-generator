@@ -66,6 +66,24 @@ func TestAdgroupNameFormatWarning(t *testing.T) {
 	}
 }
 
+func TestGenerationBasisFunnelToken(t *testing.T) {
+	g := baseGenerated()
+	g.Adgroups[0].Trace.GenerationBasis = "SKU=훈련앱; 퍼널=탐색발견; 메시지=효과"
+	if !hasRule(Validate(g).Warnings, "generation_basis_funnel_token") {
+		t.Fatal("want generation_basis_funnel_token for non-fixed funnel name")
+	}
+	g = baseGenerated()
+	g.Ads[0].Trace.GenerationBasis = "SKU=훈련앱; 퍼널=②제품발견; 메시지=효과"
+	if hasRule(Validate(g).Warnings, "generation_basis_funnel_token") {
+		t.Fatal("fixed token (with circled-number prefix) must pass")
+	}
+	g = baseGenerated()
+	g.Adgroups[0].Trace.GenerationBasis = "SKU=훈련앱" // 퍼널 항목 없음 → 검사 제외
+	if hasRule(Validate(g).Warnings, "generation_basis_funnel_token") {
+		t.Fatal("trace without 퍼널= must be skipped")
+	}
+}
+
 func TestAdNameRules(t *testing.T) {
 	g := baseGenerated()
 	g.Ads[0].AdName = ""

@@ -31,6 +31,10 @@ type ReviewResult struct {
 	Adgroups []AdgroupReview `json:"adgroups"`
 	Ads      []AdReview      `json:"ads"`
 	Problems []string        `json:"problems"`
+	// FlaggedApproved lists rows whose validation_status carries an automatic
+	// check flag but were nevertheless marked 무수정 승인 (R6). Surfaced so the
+	// operator/advertiser can confirm — never blocks the pipeline.
+	FlaggedApproved []string `json:"flagged_approved"`
 }
 
 func ReadReview(reviewPath string, g *model.Generated) (*ReviewResult, error) {
@@ -40,7 +44,7 @@ func ReadReview(reviewPath string, g *model.Generated) (*ReviewResult, error) {
 	}
 	defer f.Close()
 
-	res := &ReviewResult{Problems: []string{}}
+	res := &ReviewResult{Problems: []string{}, FlaggedApproved: []string{}}
 	knownAds := map[string]bool{}
 	for _, ad := range g.Ads {
 		knownAds[ad.AdName] = true
@@ -79,6 +83,9 @@ func ReadReview(reviewPath string, g *model.Generated) (*ReviewResult, error) {
 				res.Problems = append(res.Problems, fmt.Sprintf("adgroups_검수 %d행: keywords JSON 파싱 실패", rn+2))
 			}
 		}
+		if ar.ReviewStatus == model.StatusApproved && model.NeedsAdvertiserDefault(get("validation_status")) {
+			res.FlaggedApproved = append(res.FlaggedApproved, "adgroups:"+ar.AdgroupName)
+		}
 		res.Adgroups = append(res.Adgroups, ar)
 	}
 
@@ -104,6 +111,9 @@ func ReadReview(reviewPath string, g *model.Generated) (*ReviewResult, error) {
 		}
 		if !validStatus[ar.ReviewStatus] {
 			res.Problems = append(res.Problems, fmt.Sprintf("ads_검수 %d행: 허용되지 않는 검수상태 %q", rn+2, ar.ReviewStatus))
+		}
+		if ar.ReviewStatus == model.StatusApproved && model.NeedsAdvertiserDefault(get("validation_status")) {
+			res.FlaggedApproved = append(res.FlaggedApproved, "ads:"+ar.AdName)
 		}
 		res.Ads = append(res.Ads, ar)
 	}

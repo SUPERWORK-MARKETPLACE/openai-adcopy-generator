@@ -34,6 +34,7 @@ adcopy CLI 경로 (OS에 맞게 택1):
 ## finalize 절차 (순서 고정)
 
 1. `adcopy review-in review.xlsx generated.json` — Problems가 있으면 **중단**하고 목록 보고 (원본과 매칭 안 되는 행·허용 외 검수상태 값 등). 운영자 판정은 결과 JSON의 `review_status` 필드로 들어온다.
+   - **`flagged_approved` 확인(R6):** 결과 JSON의 `flagged_approved`는 자동 검수 플래그가 있는데 `무수정 승인`으로 판정된 행 목록이다. 비어 있지 않으면 **건수·목록을 운영자에게 보고하고 "플래그 무시하고 진행" 확인을 받은 뒤** 다음 단계로 간다(차단은 아니지만 무언 통과 금지). 확인 내용은 완료 보고에도 남긴다.
 2. 상태별 처리(위 표). `수정 후 승인` 반영분과 `부분 재생성` 결과물은 다시 `adcopy validate`를 통과해야 한다.
    - 운영자가 keywords를 수정한 경우: 기존 텍스트와 일치하는 힌트는 원래 origin을 유지하고,
      운영자가 새로 추가한 힌트는 `customer_data`(사람 제공)로 기록한다.

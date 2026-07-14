@@ -33,7 +33,7 @@ func textFindings(g *model.Generated, r *Report) {
 
 		if body != "" {
 			totalCopies[ad.AdgroupName]++
-			if strings.HasSuffix(body, "세요") {
+			if isCTAEnding(body) {
 				ctaCopies[ad.AdgroupName]++
 			}
 		}
@@ -57,12 +57,13 @@ func textFindings(g *model.Generated, r *Report) {
 		}
 	}
 
-	seenHint := map[string]string{} // campaign+"\x00"+hint -> first adgroup_name
+	seenHint := map[string]string{} // whitespace-normalized hint -> first adgroup_name
 	for _, ag := range g.Adgroups {
 		if len(ag.Keywords) < keywordsMin {
 			r.err("adgroups", ag.AdgroupName, "keywords", "keywords_min_5",
 				fmt.Sprintf("Context Hints %d개 — 최소 %d개", len(ag.Keywords), keywordsMin))
 		}
+		koTotal, koSearch := 0, 0
 		for i, k := range ag.Keywords {
 			text := strings.TrimSpace(k.Text)
 			if text == "" {
@@ -75,16 +76,31 @@ func textFindings(g *model.Generated, r *Report) {
 			if text == "" {
 				continue
 			}
-			// R4: exact-duplicate hints across different adgroups of one campaign.
-			key := ag.CampaignName + "\x00" + text
+			// R4: exact-duplicate hints across adgroups. Global scope (not just
+			// same campaign) — a generic phrase repeated anywhere in the workbook
+			// blurs group intent. Whitespace-insensitive so spacing variants match.
+			key := strings.Join(strings.Fields(text), "")
 			if first, dup := seenHint[key]; dup {
 				if first != ag.AdgroupName {
 					r.warn("adgroups", ag.AdgroupName, "keywords", "keyword_cross_adgroup_duplicate",
-						fmt.Sprintf("힌트 %q — 같은 캠페인의 %s와(과) 중복", text, first))
+						fmt.Sprintf("힌트 %q — %s와(과) 중복(범용 문구 반복 금지)", text, first))
 				}
 			} else {
 				seenHint[key] = ag.AdgroupName
 			}
+			// R3: track search-query-style hints among Korean hints.
+			if hasHangul(text) {
+				koTotal++
+				if !isSentenceFormHint(text) {
+					koSearch++
+				}
+			}
+		}
+		// R3: question/situation-form hints must be the majority per adgroup.
+		// Heuristic on Korean hints only (English hints are exempt), warning only.
+		if koTotal > 0 && koSearch*2 > koTotal {
+			r.warn("adgroups", ag.AdgroupName, "keywords", "keyword_searchform_ratio",
+				fmt.Sprintf("검색어형 힌트 %d/%d — 질문형·상황형 문장이 과반이어야 합니다", koSearch, koTotal))
 		}
 		// R5: CTA-style endings (…세요) capped at 30% of copies per adgroup.
 		if total := totalCopies[ag.AdgroupName]; total > 0 {
@@ -94,6 +110,48 @@ func textFindings(g *model.Generated, r *Report) {
 			}
 		}
 	}
+}
+
+// isCTAEnding reports whether a copy ends in an imperative …세요 form,
+// optionally followed by closing punctuation (예: "확인해보세요.").
+// Question forms ("…않으세요?") are not CTA.
+func isCTAEnding(body string) bool {
+	if strings.HasSuffix(body, "?") || strings.HasSuffix(body, "？") {
+		return false
+	}
+	return strings.HasSuffix(strings.TrimRight(body, ".!。！ "), "세요")
+}
+
+// isSentenceFormHint reports whether a hint reads as a question/situation
+// sentence rather than a search-query noun phrase (R3). Heuristic: a question
+// mark, an interrogative word, or a sentence-final ending counts as sentence
+// form. Conservative on purpose — feeds a warning-only per-group ratio.
+func isSentenceFormHint(text string) bool {
+	t := strings.TrimSpace(text)
+	if strings.HasSuffix(t, "?") || strings.HasSuffix(t, "？") {
+		return true
+	}
+	for _, m := range []string{"어떻게", "어디서", "무엇", "뭐가", "얼마나", "언제"} {
+		if strings.Contains(t, m) {
+			return true
+		}
+	}
+	t = strings.TrimRight(t, ".!。！ ")
+	for _, suf := range []string{"요", "까", "죠", "다면", "라면", "은데", "인데", "때"} {
+		if strings.HasSuffix(t, suf) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasHangul(s string) bool {
+	for _, r := range s {
+		if (r >= 0xAC00 && r <= 0xD7A3) || (r >= 0x3131 && r <= 0x318E) {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Report) err(entity, id, field, rule, msg string) {

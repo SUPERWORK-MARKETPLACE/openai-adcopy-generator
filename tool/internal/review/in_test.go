@@ -56,6 +56,27 @@ func TestReadReviewRoundTrip(t *testing.T) {
 	if len(res.Adgroups[0].Keywords) != 5 {
 		t.Fatalf("keywords not parsed: %+v", res.Adgroups[0].Keywords)
 	}
+	// 수정 후 승인은 flagged_approved 대상이 아니다(무수정 승인만 해당).
+	if len(res.FlaggedApproved) != 0 {
+		t.Fatalf("unexpected flagged_approved: %v", res.FlaggedApproved)
+	}
+}
+
+func TestReadReviewFlagsBulkApprovedRows(t *testing.T) {
+	// R6: 플래그 행(validation_status에 트리거 포함)이 무수정 승인으로 덮이면
+	// flagged_approved로 표면화한다 — 차단은 하지 않는다.
+	g := sampleGenerated()
+	p := writeEditedReview(t, g, func(f *excelize.File) {
+		f.SetCellValue("ads_검수", "J2", model.StatusApproved)      // 플래그 행 일괄 승인 시뮬레이션
+		f.SetCellValue("adgroups_검수", "F2", model.StatusApproved) // 깨끗한 행(통과) 승인
+	})
+	res, err := ReadReview(p, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.FlaggedApproved) != 1 || res.FlaggedApproved[0] != "ads:KID_01_001" {
+		t.Fatalf("want flagged_approved [ads:KID_01_001], got %v", res.FlaggedApproved)
+	}
 }
 
 func TestReadReviewFlagsProblems(t *testing.T) {

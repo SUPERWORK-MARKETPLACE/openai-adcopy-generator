@@ -68,6 +68,7 @@ func structFindings(g *model.Generated, r *Report) {
 		if ag.Trace.ConfidenceScore < 0 || ag.Trace.ConfidenceScore > 1 {
 			r.err("adgroups", name, "confidence_score", "confidence_range", "confidence_score는 0~1")
 		}
+		checkFunnelToken(r, "adgroups", name, ag.Trace.GenerationBasis)
 	}
 
 	adNames := map[string]bool{}
@@ -86,7 +87,29 @@ func structFindings(g *model.Generated, r *Report) {
 		if ad.Trace.ConfidenceScore < 0 || ad.Trace.ConfidenceScore > 1 {
 			r.err("ads", ad.AdName, "confidence_score", "confidence_range", "confidence_score는 0~1")
 		}
+		checkFunnelToken(r, "ads", ad.AdName, ad.Trace.GenerationBasis)
 	}
+}
+
+// checkFunnelToken warns when generation_basis records a 퍼널= value that is
+// not one of the six fixed R1 tokens. Skips traces without a 퍼널= entry.
+func checkFunnelToken(r *Report, entity, id, basis string) {
+	i := strings.Index(basis, "퍼널=")
+	if i < 0 {
+		return
+	}
+	v := basis[i+len("퍼널="):]
+	if j := strings.IndexAny(v, ";,|"); j >= 0 {
+		v = v[:j]
+	}
+	v = strings.TrimLeft(strings.TrimSpace(v), "①②③④⑤⑥")
+	for _, s := range model.FunnelStages {
+		if v == s {
+			return
+		}
+	}
+	r.warn(entity, id, "generation_basis", "generation_basis_funnel_token",
+		fmt.Sprintf("퍼널=%q — 고정 토큰(%s) 중 하나여야 합니다", v, strings.Join(model.FunnelStages, "·")))
 }
 
 // checkAdgroupNameFormat enforces the R2 naming structure
