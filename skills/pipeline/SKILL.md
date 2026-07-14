@@ -60,7 +60,7 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
   "adgroups": [{
     "campaign_name": "01_학습자료", "adgroup_name": "훈련앱_초등학부모_반복훈련필요_제품발견",
     "keywords": [{"text": "초등 영어 앱은 어떤 걸로 시작하면 좋을까?", "origin": "customer_data"}],
-    "trace": {"source_type": "브리프", "source_url": "", "source_excerpt": "",
+    "trace": {"source_type": "브리프", "source_url": "", "source_excerpt": "매일 10분 반복 훈련으로 영어 습관 형성",
       "generation_basis": "SKU=...; Persona=...; 문제=...; 상황=...; 퍼널=제품발견; 세부의도=...; 메시지=...",
       "confidence_score": 0.9, "validation_status": "", "review_comment": "", "exclusion_reason": ""}
   }],
@@ -74,6 +74,7 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 
 - `keywords[].origin`: 실제 고객 데이터 기반이면 `customer_data`, AI 추론이면 `ai_inferred` (결과에서 구분 표시 의무).
 - `adgroup_name`은 `상품/SKU_타깃_세부의도_구매여정` 4슬롯 형식 — 마지막 슬롯(중복 순번 숫자 접미 앞)은 퍼널 6개 고정 토큰(문제정의·제품발견·비교검토·단일제품평가·신청전환·사용도움) 중 하나만. `generation_basis`의 `퍼널=` 값도 동일 토큰. validate가 `adgroup_name_format` 규칙으로 경고 검사(차단 아님).
+- **`trace.source_excerpt`**: `source_type`이 ai_inferred가 아니면 **근거 원문 발췌 필수** — 빈칸이면 validate가 `source_excerpt_missing` 경고(광고 ads trace에 적용; `source_type` 빈칸은 검사 대상 아님).
 - **`trace.validation_status` = AI 자동 검수 결과·노트 필드.** 표준 플래그 어휘 8종 — `의미 중복 후보`·`경고`·`광고주 확인 필요`·`길이 초과`·`길이 권장 초과`·`근거 확인 필요`·`정책 확인 필요`·`문장 자연성 확인 필요` — 로 기록한다. 정보 충돌은 "광고주 확인 필요", 근거 부족은 "근거 확인 필요", 노트는 토큰을 접두로("의미 중복 후보: <ad_name>", "정책 확인 필요: 1위 표현 출처 불명확"). **`trace.review_comment`는 운영자·광고주 기입란 — AI가 채우지 않는다(항상 빈 문자열).**
 - **`max_bid`는 절대 쓰지 않는다** — 값이 있으면 validate가 오류로 잡는다.
 - `campaigns`는 입력 워크북 값을 그대로 옮긴다(AI가 지어내지 않음).
@@ -86,8 +87,8 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
 1. `adcopy validate generated.json` → `validate-report.json`.
 2. errors가 있으면 해당 항목만 재생성/수정 후 재실행 (최대 3회 반복, 그래도 남으면 해당 항목 제외 + 제외 사유 기록).
    - `banned_term`(금지어 포함)은 **해당 광고만** 카피를 고쳐(금지어 제거) 재실행한다.
-3. 형식 검증과 별개로 의미 검수를 스스로 점검: adcopy:copy-rules의 금지 규칙, 광고그룹 간 Context Hints 중복·범용 문구 반복·힌트 내 여정 의도 혼합(context-expansion 규칙 — 중복 금지는 캠페인 무관 전역), 동일 광고그룹 내 종결형 분산·CTA형 종결 30% 이하(copy-rules 메시지 다양성), **그룹별 힌트 유형 카운트 — 검색어형 40%/질문·상황형 60%(±10%, 검색어형 30~50%) 범위인지 세어 확인 + 검색어형 힌트마다 {상품/SKU·타깃·세부 의도·구매여정} 중 2개 이상 드러났는지 확인**(범위 밖·요소 부족은 재작성), **title/copy 문장 자연성**(copy는 완결 문장 — copy-rules 문장 자연성 체크리스트, 문제 발견 시 "문장 자연성 확인 필요" 기록), **title+copy 연결성**(copy가 title 핵심어 단순 반복이면 "의미 중복 후보" 플래그 + 재작성).
-4. **warnings도 방치하지 마라 — 단, 수정 라운드는 1회:** `keyword_searchform_ratio`·`keyword_cross_adgroup_duplicate`·`copy_cta_ratio_30`·`copy_sentence_form` 경고는 해당 그룹의 힌트·카피를 재작성해 해소한다. `title_len_recommended`/`copy_len_recommended` 경고가 전체 광고의 과반이면 해당 그룹들을 권장 길이에 맞춰 재생성한다. **경고 수정은 한 라운드만** — 라운드 후 남은 경고는 검수 워크북으로 그대로 전달한다(플래그 행 처리). 대량 생성 모드에서는 §8-2 셀프 검증이 이 작업 대부분을 생성 단계에서 흡수하므로, 여기서는 교차 청크 잔여분만 처리한다(수정 에이전트를 띄울 땐 병렬로).
+3. 형식 검증과 별개로 의미 검수를 스스로 점검: adcopy:copy-rules의 금지 규칙, 광고그룹 간 Context Hints 중복·범용 문구 반복·힌트 내 여정 의도 혼합(context-expansion 규칙 — 중복 금지는 캠페인 무관 전역), 동일 광고그룹 내 종결형 분산·CTA형 종결 30% 이하(copy-rules 메시지 다양성), **그룹별 힌트 유형 카운트 — 검색어형 40%/질문·상황형 60%(±10%, 검색어형 30~50%) 범위인지 세어 확인 + 검색어형 힌트마다 {상품/SKU·타깃·세부 의도·구매여정} 중 2개 이상 드러났는지 확인**(범위 밖·요소 부족은 재작성), **title/copy 문장 자연성**(copy는 완결 문장 — copy-rules 문장 자연성 체크리스트, 문제 발견 시 "문장 자연성 확인 필요" 기록), **title+copy 연결성**(copy가 title 핵심어 단순 반복·어절 재배열이면 "의미 중복 후보" 플래그 + 재작성), **ai_inferred 광고 전수 점검**(상품 기능·측정 지표·수치·제3자 사용 등 상품 사실 주장이 들어 있으면 근거를 찾아 출처를 바로잡거나 재작성/"근거 확인 필요" 플래그 — copy-rules 사실성), **copy 어체 통일 점검**(해요체·합니다체 — 반말 평서형은 재작성), **사실 인용 광고(`source_type`이 ai_inferred가 아닌 광고)의 `source_excerpt` 채움 확인**.
+4. **warnings도 방치하지 마라 — 단, 수정 라운드는 1회:** `keyword_searchform_ratio`·`keyword_cross_adgroup_duplicate`·`copy_cta_ratio_30`·`copy_sentence_form`·`copy_speech_level`·`title_copy_overlap` 경고는 해당 그룹의 힌트·카피를 재작성해 해소하고, `source_excerpt_missing` 경고는 근거 원문 발췌를 채워 해소한다. `title_len_recommended`/`copy_len_recommended` 경고가 전체 광고의 과반이면 해당 그룹들을 권장 길이에 맞춰 재생성한다. **경고 수정은 한 라운드만** — 라운드 후 남은 경고는 검수 워크북으로 그대로 전달한다(플래그 행 처리). 대량 생성 모드에서는 §8-2 셀프 검증이 이 작업 대부분을 생성 단계에서 흡수하므로, 여기서는 교차 청크 잔여분만 처리한다(수정 에이전트를 띄울 땐 병렬로).
 
 ## 7. 검수 워크북 출력·보고
 
@@ -123,7 +124,8 @@ AI 추천 기본값을 제시하고 운영자 조정을 받는다: 포함/제외
   구분한다**(§5 ad_name 규칙 — 순번 범위로만 그룹을 나누면 `ad_name_format` 경고).
 - **셀프 검증(필수 — 병렬 창 안에서 경고를 끝낸다):** 각 서브에이전트는 청크 작성 후
   `adcopy validate <자기 청크.json>`을 직접 실행하고(청크에 campaigns·policy가 있어 단독 검증
-  가능) **자기 몫 오류·경고를 스스로 해소한 뒤** 반환한다(최대 2회 반복). 병합 후 별도 수정
+  가능) **자기 몫 오류·경고(`copy_speech_level`·`title_copy_overlap`·`source_excerpt_missing` 포함)를
+  스스로 해소한 뒤** 반환한다(최대 2회 반복). 병합 후 별도 수정
   에이전트를 다시 띄우는 것보다 이 방식이 훨씬 빠르다 — 컨텍스트가 이미 로딩돼 있고 전체
   병렬 창에 흡수된다. 단, 교차 청크 검사(그룹 간 힌트 중복 등)는 청크 단독으론 못 잡으므로
   병합 후 §8-3 검증이 최종이다.

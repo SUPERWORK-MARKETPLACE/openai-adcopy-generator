@@ -271,6 +271,73 @@ func TestCopySentenceForm(t *testing.T) {
 	}
 }
 
+func TestCopySpeechLevel(t *testing.T) {
+	// 반말 평서형(…있다) → 경고 (F3)
+	g := baseGenerated()
+	g.Ads[0].Copy = "학부모 앱으로 아이의 학습 데이터를 직접 확인해볼 수 있다"
+	if !hasRule(Validate(g).Warnings, "copy_speech_level") {
+		t.Fatal("want copy_speech_level for 반말 …있다 ending")
+	}
+	// 반말 평서형 + 꼬리 구두점(…된다.) → 경고
+	g = baseGenerated()
+	g.Ads[0].Copy = "체험 후 마음에 들면 정회원, 아니면 그대로 반납하면 된다."
+	if !hasRule(Validate(g).Warnings, "copy_speech_level") {
+		t.Fatal("want copy_speech_level for punctuated 반말 …된다. ending")
+	}
+	// 합니다체(…합니다) → 통과
+	g = baseGenerated()
+	g.Ads[0].Copy = "6대 영역을 매일 훈련하고 무료 레벨테스트로 진단합니다"
+	if hasRule(Validate(g).Warnings, "copy_speech_level") {
+		t.Fatal("합니다체 ending must pass")
+	}
+	// 해요체(…있어요) → 통과 (fixture copy)
+	if hasRule(Validate(baseGenerated()).Warnings, "copy_speech_level") {
+		t.Fatal("해요체 ending must pass")
+	}
+	// …답니다 → 통과 (니다 계열)
+	g = baseGenerated()
+	g.Ads[0].Copy = "아이들이 매일 10분씩 즐겁게 영어 훈련을 이어간답니다"
+	if hasRule(Validate(g).Warnings, "copy_speech_level") {
+		t.Fatal("…답니다 ending must pass")
+	}
+	// 어간이 '니다' 룬으로 끝나는 반말(…아니다) → 경고 (합니다체 오인 금지)
+	g = baseGenerated()
+	g.Ads[0].Copy = "학습기 반납은 어렵지 않고 추가 비용 부담도 전혀 아니다"
+	if !hasRule(Validate(g).Warnings, "copy_speech_level") {
+		t.Fatal("want copy_speech_level for 반말 …아니다 ending")
+	}
+	// 영어 카피는 판정 제외
+	g = baseGenerated()
+	g.Ads[0].Copy = "Start daily English training with a free level test"
+	if hasRule(Validate(g).Warnings, "copy_speech_level") {
+		t.Fatal("English copy must be exempt")
+	}
+}
+
+func TestTitleCopyOverlap(t *testing.T) {
+	// 제목을 그대로 풀어 쓴 카피 → 경고 (F2 실사례)
+	g := baseGenerated()
+	g.Ads[0].Title = "학부모 앱으로 보는 학습 데이터"
+	g.Ads[0].Copy = "학부모 앱으로 아이의 학습 데이터를 직접 확인할 수 있어요"
+	if !hasRule(Validate(g).Warnings, "title_copy_overlap") {
+		t.Fatal("want title_copy_overlap for near-verbatim repetition")
+	}
+	// 정상 쌍(제목에 없는 새 정보) → 통과
+	g = baseGenerated()
+	g.Ads[0].Title = "아이 영어 수준부터 알고 싶다면"
+	g.Ads[0].Copy = "집에서 미리 체험해 보면 아이 수준과 흥미를 알 수 있어요"
+	if hasRule(Validate(g).Warnings, "title_copy_overlap") {
+		t.Fatal("normal pair must pass")
+	}
+	// 짧은 제목(bigram 6개 미만)은 판정 제외 — 카피가 제목을 그대로 포함해도 통과
+	g = baseGenerated()
+	g.Ads[0].Title = "무료 체험 신청" // 6자 → bigram 5개 < 6
+	g.Ads[0].Copy = "무료 체험 신청 후 아이 영어 수준을 바로 확인해 보세요"
+	if hasRule(Validate(g).Warnings, "title_copy_overlap") {
+		t.Fatal("short title must be exempt")
+	}
+}
+
 func TestCopyCtaRatioOver30Warns(t *testing.T) {
 	g := baseGenerated()
 	g.Ads[0].Copy = "아이에게 맞는 영어 학습법을 지금 무료로 확인해보세요" // CTA ending, 1/1 = 100%

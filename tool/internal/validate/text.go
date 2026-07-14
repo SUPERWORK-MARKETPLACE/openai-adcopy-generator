@@ -3,6 +3,7 @@ package validate
 import (
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"adcopy/internal/model"
@@ -12,6 +13,13 @@ const (
 	titleMax, titleRecLo, titleRecHi = 24, 16, 18
 	copyMax, copyRecLo, copyRecHi    = 48, 32, 36
 	keywordsMin                      = 5
+	// F2: copy repeats the title when this share of the title's character
+	// bigrams reappears in the copy. Tuned on 캐츠잉글리시 live data (117 ads):
+	// at 0.70 all 7 flagged ads are genuine title repeats (zero false
+	// positives); borderline near-repeats score 0.62~0.69 and clearly normal
+	// pairs start around 0.55.
+	overlapThreshold  = 0.70
+	overlapMinBigrams = 6 // shorter titles are too small to judge
 )
 
 func textFindings(g *model.Generated, r *Report) {
@@ -52,6 +60,18 @@ func textFindings(g *model.Generated, r *Report) {
 			if msg := sentenceFormIssue(body); msg != "" {
 				r.warn("ads", ad.AdName, "copy", "copy_sentence_form", msg)
 			}
+			// F3: 반말 평서형 (…있다/…된다) breaks the polite ad tone.
+			if isBanmalEnding(body) {
+				r.warn("ads", ad.AdName, "copy", "copy_speech_level",
+					"반말 평서형 종결 — 해요체·합니다체로 통일하세요")
+			}
+		}
+
+		// F2: a copy must add information beyond the title — near-verbatim
+		// repetition is flagged via character-bigram containment. Warning only.
+		if body != "" && hasHangul(title) && titleCopyOverlap(title, body) >= overlapThreshold {
+			r.warn("ads", ad.AdName, "copy", "title_copy_overlap",
+				"카피가 제목을 반복합니다 — 제목에 없는 새 정보를 담으세요")
 		}
 
 		if title != "" && title == body {
@@ -152,6 +172,69 @@ func sentenceFormIssue(body string) string {
 		}
 	}
 	return "명사구·불완전 종결 — copy는 완결 문장이어야 합니다"
+}
+
+// isBanmalEnding reports whether a copy ends in a plain-declarative 반말 form
+// (F3, 예: "…있다", "…된다", "…아니다"): after stripping closing punctuation it
+// ends in 다 without a polite ㅂ니다 ending — the syllable before 니다 must
+// carry a ㅂ 받침 (합니다·습니다·답니다 pass; a bare 니다-final stem like
+// 아니다 is 반말). Question/exclamation endings are exempt — same pre-pass as
+// sentenceFormIssue.
+func isBanmalEnding(body string) bool {
+	for _, suf := range []string{"?", "？", "!", "！"} {
+		if strings.HasSuffix(body, suf) {
+			return false
+		}
+	}
+	t := strings.TrimRight(body, ".!。！ ")
+	if !strings.HasSuffix(t, "다") {
+		return false
+	}
+	rs := []rune(t)
+	if len(rs) >= 3 && rs[len(rs)-2] == '니' && hasBieupBatchim(rs[len(rs)-3]) {
+		return false
+	}
+	return true
+}
+
+// hasBieupBatchim reports whether a hangul syllable carries a ㅂ final
+// consonant (받침, jongseong index 17 — 합·습·답·됩 등).
+func hasBieupBatchim(r rune) bool {
+	return r >= 0xAC00 && r <= 0xD7A3 && (r-0xAC00)%28 == 17
+}
+
+// titleCopyOverlap returns the share of the title's character bigrams that
+// also appear in the copy (F2). Whitespace and punctuation are stripped before
+// building bigrams. Returns 0 when the title has fewer than overlapMinBigrams
+// bigrams — too short to judge repetition.
+func titleCopyOverlap(title, body string) float64 {
+	tb := charBigrams(title)
+	if len(tb) < overlapMinBigrams {
+		return 0
+	}
+	cb := charBigrams(body)
+	hit := 0
+	for b := range tb {
+		if cb[b] {
+			hit++
+		}
+	}
+	return float64(hit) / float64(len(tb))
+}
+
+func charBigrams(s string) map[string]bool {
+	var runes []rune
+	for _, r := range s {
+		if unicode.IsSpace(r) || strings.ContainsRune(",.·?!？！", r) {
+			continue
+		}
+		runes = append(runes, r)
+	}
+	out := map[string]bool{}
+	for i := 0; i+1 < len(runes); i++ {
+		out[string(runes[i:i+2])] = true
+	}
+	return out
 }
 
 // isSentenceFormHint reports whether a hint reads as a question/situation

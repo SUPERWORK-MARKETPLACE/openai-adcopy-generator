@@ -91,6 +91,13 @@ func structFindings(g *model.Generated, r *Report) {
 		if ad.Trace.ConfidenceScore < 0 || ad.Trace.ConfidenceScore > 1 {
 			r.err("ads", ad.AdName, "confidence_score", "confidence_range", "confidence_score는 0~1")
 		}
+		// F4: a sourced ad must carry its excerpt — 근거 추적 (§7). ai_inferred
+		// traces are exempt (맥락 추론 전용, no document to quote).
+		if st := strings.TrimSpace(ad.Trace.SourceType); st != "" && st != "ai_inferred" &&
+			strings.TrimSpace(ad.Trace.SourceExcerpt) == "" {
+			r.warn("ads", ad.AdName, "source_excerpt", "source_excerpt_missing",
+				"출처 발췌(source_excerpt)가 비어 있습니다 — 근거 추적 필수")
+		}
 		checkFunnelToken(r, "ads", ad.AdName, ad.Trace.GenerationBasis)
 	}
 }

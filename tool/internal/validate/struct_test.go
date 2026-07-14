@@ -86,6 +86,30 @@ func TestGenerationBasisFunnelToken(t *testing.T) {
 	}
 }
 
+func TestSourceExcerptMissing(t *testing.T) {
+	// 브리프 출처 + 발췌 공란 → 경고 (F4 — 근거 추적)
+	g := baseGenerated()
+	g.Ads[0].Trace.SourceType = "브리프"
+	if !hasRule(Validate(g).Warnings, "source_excerpt_missing") {
+		t.Fatal("want source_excerpt_missing for sourced ad without excerpt")
+	}
+	// 브리프 출처 + 발췌 있음 → 통과
+	g.Ads[0].Trace.SourceExcerpt = "6대 영역 매일 훈련, 무료 레벨테스트 제공"
+	if hasRule(Validate(g).Warnings, "source_excerpt_missing") {
+		t.Fatal("sourced ad with excerpt must pass")
+	}
+	// ai_inferred + 발췌 공란 → 통과 (맥락 추론 전용, 발췌 의무 없음)
+	g = baseGenerated()
+	g.Ads[0].Trace.SourceType = "ai_inferred"
+	if hasRule(Validate(g).Warnings, "source_excerpt_missing") {
+		t.Fatal("ai_inferred trace must be exempt")
+	}
+	// source_type 공란 → 통과 (검사 대상 아님)
+	if hasRule(Validate(baseGenerated()).Warnings, "source_excerpt_missing") {
+		t.Fatal("blank source_type must be exempt")
+	}
+}
+
 func TestAdNameRules(t *testing.T) {
 	g := baseGenerated()
 	g.Ads[0].AdName = ""
