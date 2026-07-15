@@ -74,6 +74,14 @@ func textFindings(g *model.Generated, r *Report) {
 				"카피가 제목을 반복합니다 — 제목에 없는 새 정보를 담으세요")
 		}
 
+		// S5 강화 (0715 요청 2): title이 질문을 던졌는데 copy도 질문으로 끝나면
+		// 세트가 답을 주지 못한다 — copy는 해결 방향·혜택·이용 방식으로 보완해야
+		// 한다. Warning only.
+		if body != "" && isQuestionForm(title) && isQuestionForm(body) {
+			r.warn("ads", ad.AdName, "copy", "title_copy_question_repeat",
+				"title 질문에 copy가 다시 질문합니다 — 해결 방향·혜택으로 답하세요")
+		}
+
 		if title != "" && title == body {
 			r.err("ads", ad.AdName, "copy", "copy_equals_title", "카피가 제목과 동일합니다")
 		}
@@ -139,6 +147,28 @@ func textFindings(g *model.Generated, r *Report) {
 			}
 		}
 	}
+}
+
+// isQuestionForm reports whether a text reads as a question: it ends with a
+// question mark, or (after stripping closing punctuation) with 까 — 합니까/
+// 할까/일까 written without a question mark. A 니까 ending without a ㅂ받침
+// before 니 is the causal connective (걸어주니까·좋으니까), not a question —
+// 합니까/입니까 keep matching. Conservative on purpose: plain 요-ending
+// questions without a question mark (볼까요 등) are indistinguishable from
+// statements, so they are not matched. Feeds warning-only checks.
+func isQuestionForm(s string) bool {
+	if strings.HasSuffix(s, "?") || strings.HasSuffix(s, "？") {
+		return true
+	}
+	t := strings.TrimRight(s, ".!。！ ")
+	if !strings.HasSuffix(t, "까") {
+		return false
+	}
+	rs := []rune(t)
+	if len(rs) >= 3 && rs[len(rs)-2] == '니' && !hasBieupBatchim(rs[len(rs)-3]) {
+		return false
+	}
+	return true
 }
 
 // isCTAEnding reports whether a copy ends in an imperative …세요 form,

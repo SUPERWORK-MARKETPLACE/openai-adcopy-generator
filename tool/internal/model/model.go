@@ -8,7 +8,9 @@ import (
 	"strings"
 )
 
-// Review status values (charter §7).
+// Review status values (charter §7). StatusNeedsAdvertiser is a
+// validation_status flag only — it is NOT a 검수상태 dropdown value
+// (0715 요청 1: 검수상태는 광고주 검수 결과 입력란, 광고주 확인 필요 제외).
 const (
 	StatusApproved        = "무수정 승인"
 	StatusApprovedEdited  = "수정 후 승인"
@@ -17,27 +19,30 @@ const (
 	StatusNeedsAdvertiser = "광고주 확인 필요"
 )
 
-// AllStatuses in dropdown order.
-var AllStatuses = []string{StatusApproved, StatusApprovedEdited, StatusRejected, StatusRegenerate, StatusNeedsAdvertiser}
+// AllStatuses: 검수상태 dropdown values in order (광고주 판정 4종).
+var AllStatuses = []string{StatusApproved, StatusApprovedEdited, StatusRejected, StatusRegenerate}
 
 // FunnelStages are the six fixed purchase-journey tokens (R1). adgroup_name's
 // last slot (or the slot before a numeric dedup suffix) must be one of these.
 var FunnelStages = []string{"문제정의", "제품발견", "비교검토", "단일제품평가", "신청전환", "사용도움"}
 
 // ReviewTriggerTokens: if a merged validation_status cell contains any of
-// these, the operator-decision default must be StatusNeedsAdvertiser (R6).
+// these, the row is an automatic-check flag row (R6) — counted in the review
+// summary and surfaced as flagged_approved when overridden with 무수정 승인.
 // 8 tokens — "길이 권장 초과" and "문장 자연성 확인 필요" added by S1 (2026-07-14).
 var ReviewTriggerTokens = []string{
 	"의미 중복 후보", "경고", StatusNeedsAdvertiser, "길이 초과", "근거 확인 필요", "정책 확인 필요",
 	"길이 권장 초과", "문장 자연성 확인 필요",
 }
 
-// NeedsAdvertiserDefault reports whether the merged validation_status cell
-// value triggers the default operator decision "광고주 확인 필요".
+// HasReviewTrigger reports whether the merged validation_status cell value
+// carries an automatic review flag (R6 trigger). 검수상태 is never pre-filled
+// from this (0715 요청 1: 검수상태는 항상 빈칸 디폴트, 광고주가 기입) — it only
+// drives the summary flag count and review-in's flagged_approved surfacing.
 // Machine findings merged by review-out carry "경고(rule): msg" / "오류(rule): msg"
 // prefixes; an error-only row must trigger too (it is worse than a warning row),
 // so the "오류(" prefix is matched alongside the R6 trigger tokens.
-func NeedsAdvertiserDefault(mergedCell string) bool {
+func HasReviewTrigger(mergedCell string) bool {
 	if strings.Contains(mergedCell, "오류(") {
 		return true
 	}

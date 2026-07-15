@@ -61,13 +61,13 @@ func TestWriteReviewWorkbook(t *testing.T) {
 		rows[0][8] != "validation_status" || rows[0][9] != StatusColumnHeader || rows[0][10] != "review_comment" {
 		t.Fatalf("ads_검수 headers wrong: %v", rows[0])
 	}
-	// validation_status carries the AI-written auto-check note; the trigger row
-	// gets the 검수상태 default 광고주 확인 필요 (R6 — review-out pre-fills it).
+	// validation_status carries the AI-written auto-check note; 검수상태 stays
+	// blank even on a trigger row (0715 요청 1 — no pre-fill, 광고주가 기입).
 	if rows[1][0] != "KID_01_001" || rows[1][8] != model.StatusNeedsAdvertiser {
 		t.Fatalf("ads_검수 row wrong: %v", rows[1])
 	}
-	if rows[1][9] != model.StatusNeedsAdvertiser {
-		t.Fatalf("trigger row 검수상태 must default to %q, got %q", model.StatusNeedsAdvertiser, rows[1][9])
+	if rows[1][9] != "" {
+		t.Fatalf("trigger row 검수상태 must stay blank, got %q", rows[1][9])
 	}
 	if rows[1][3] != "18" { // title rune count as string
 		t.Errorf("title_글자수 = %q, want 18", rows[1][3])
@@ -97,8 +97,18 @@ func TestWriteReviewWorkbook(t *testing.T) {
 	if dvs[0].Sqref != "J2:J2" {
 		t.Errorf("dropdown must sit on the 검수상태 column J, got %q", dvs[0].Sqref)
 	}
+	// 0715 요청 1: 광고주 확인 필요 is validation_status-only — the 검수상태
+	// dropdown offers the 4 advertiser statuses and nothing else. The positive
+	// assertion guards against excelize returning an empty Formula1.
+	if !strings.Contains(dvs[0].Formula1, model.StatusApproved) ||
+		!strings.Contains(dvs[0].Formula1, model.StatusRegenerate) {
+		t.Errorf("검수상태 dropdown must list the 4 statuses, got %q", dvs[0].Formula1)
+	}
+	if strings.Contains(dvs[0].Formula1, model.StatusNeedsAdvertiser) {
+		t.Errorf("검수상태 dropdown must not contain %q: %q", model.StatusNeedsAdvertiser, dvs[0].Formula1)
+	}
 
-	// 요약 시트: 상태값 목록 행 + 상태값별 설명 행(5종 + 빈칸) — 항목 3 후속.
+	// 요약 시트: 상태값 목록 행 + 상태값별 설명 행(4종 + 빈칸) — 항목 3 후속.
 	sumRows, err := f.GetRows("요약")
 	if err != nil {
 		t.Fatal(err)
@@ -165,17 +175,16 @@ func TestWriteReviewMergesValidationFindings(t *testing.T) {
 		!strings.Contains(cell, "copy_len_recommended") || !strings.Contains(cell, "경고") {
 		t.Fatalf("validation_status must merge trace note and finding, got %q", cell)
 	}
-	// 경고-단독 행 (trace note 없음): the trigger token "경고" alone must still
-	// pre-fill the 검수상태 default (R6 — 자동 무수정 승인 금지).
-	if !strings.Contains(rows[2][8], "경고") || rows[2][9] != model.StatusNeedsAdvertiser {
-		t.Fatalf("warning-only row 검수상태 must default to %q, got status=%q cell=%q",
-			model.StatusNeedsAdvertiser, rows[2][9], rows[2][8])
+	// 경고-단독 행 (trace note 없음): the trigger token "경고" lands in
+	// validation_status, but 검수상태 stays blank (0715 요청 1 — no pre-fill).
+	if !strings.Contains(rows[2][8], "경고") || rows[2][9] != "" {
+		t.Fatalf("warning-only row: want 경고 in validation_status and blank 검수상태, got status=%q cell=%q",
+			rows[2][9], rows[2][8])
 	}
-	// 오류-단독 행: a machine error alone must also pre-fill the default —
-	// an error row is worse than a warning row and must not look "clean".
-	if !strings.Contains(rows[3][8], "오류") || rows[3][9] != model.StatusNeedsAdvertiser {
-		t.Fatalf("error-only row 검수상태 must default to %q, got status=%q cell=%q",
-			model.StatusNeedsAdvertiser, rows[3][9], rows[3][8])
+	// 오류-단독 행: the machine error shows in validation_status; 검수상태 blank.
+	if !strings.Contains(rows[3][8], "오류") || rows[3][9] != "" {
+		t.Fatalf("error-only row: want 오류 in validation_status and blank 검수상태, got status=%q cell=%q",
+			rows[3][9], rows[3][8])
 	}
 	// Row with no findings and no trace note → 통과.
 	agRows, err := f.GetRows("adgroups_검수")

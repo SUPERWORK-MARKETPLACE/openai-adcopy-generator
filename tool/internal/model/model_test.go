@@ -73,27 +73,40 @@ func TestLoadMissingFile(t *testing.T) {
 	}
 }
 
-func TestNeedsAdvertiserDefault(t *testing.T) {
+func TestHasReviewTrigger(t *testing.T) {
 	for _, tok := range ReviewTriggerTokens {
-		if !NeedsAdvertiserDefault(tok) {
+		if !HasReviewTrigger(tok) {
 			t.Errorf("want true for trigger token %q", tok)
 		}
 	}
 	// S1 (2026-07-14): 신규 트리거 토큰 2종은 명시적으로 보장한다.
 	for _, tok := range []string{"길이 권장 초과", "문장 자연성 확인 필요"} {
-		if !NeedsAdvertiserDefault(tok) {
+		if !HasReviewTrigger(tok) {
 			t.Errorf("want true for S1 trigger token %q", tok)
 		}
 	}
-	if !NeedsAdvertiserDefault("경고(copy_len_recommended): 카피 30자 — 권장 32~36자") {
+	if !HasReviewTrigger("경고(copy_len_recommended): 카피 30자 — 권장 32~36자") {
 		t.Error("want true for merged cell containing a 경고 finding")
 	}
-	if !NeedsAdvertiserDefault("오류(copy_max_48): 카피 49자 — 최대 48자") {
+	if !HasReviewTrigger("오류(copy_max_48): 카피 49자 — 최대 48자") {
 		t.Error("want true for merged cell containing an 오류-only finding")
 	}
 	for _, cell := range []string{"", "통과"} {
-		if NeedsAdvertiserDefault(cell) {
+		if HasReviewTrigger(cell) {
 			t.Errorf("want false for %q", cell)
+		}
+	}
+}
+
+// 0715 요청 1: 검수상태 드롭다운은 광고주 판정 4종만 — 광고주 확인 필요는
+// validation_status 전용 플래그로 남는다.
+func TestAllStatusesExcludeNeedsAdvertiser(t *testing.T) {
+	if len(AllStatuses) != 4 {
+		t.Fatalf("want 4 dropdown statuses, got %d: %v", len(AllStatuses), AllStatuses)
+	}
+	for _, s := range AllStatuses {
+		if s == StatusNeedsAdvertiser {
+			t.Fatalf("%q must not be a 검수상태 dropdown value", StatusNeedsAdvertiser)
 		}
 	}
 }

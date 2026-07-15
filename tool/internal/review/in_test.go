@@ -2,6 +2,7 @@ package review
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/xuri/excelize/v2"
@@ -92,6 +93,40 @@ func TestReadReviewFlagsProblems(t *testing.T) {
 	}
 	if len(res.Problems) < 3 {
 		t.Fatalf("want >=3 problems (unknown ad, bad status, bad keywords), got %v", res.Problems)
+	}
+}
+
+// 0715 요청 1: 검수상태 blank default — a flagged row left unreviewed must be
+// surfaced as flagged_unreviewed so finalize's 미검수 report keeps the flag
+// context. Clean unreviewed rows (adgroup here) stay out.
+func TestReadReviewFlagsUnreviewedFlaggedRows(t *testing.T) {
+	g := sampleGenerated()
+	p := writeEditedReview(t, g, func(f *excelize.File) {}) // nothing filled in
+	res, err := ReadReview(p, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.FlaggedUnreviewed) != 1 || res.FlaggedUnreviewed[0] != "ads:KID_01_001" {
+		t.Fatalf("want flagged_unreviewed [ads:KID_01_001], got %v", res.FlaggedUnreviewed)
+	}
+	if len(res.FlaggedApproved) != 0 {
+		t.Fatalf("unexpected flagged_approved: %v", res.FlaggedApproved)
+	}
+}
+
+// 0715 요청 1: 광고주 확인 필요 is no longer a 검수상태 value — entering it in
+// the dropdown column must surface as a problem (validation_status 전용 플래그).
+func TestReadReviewRejectsNeedsAdvertiserAsStatus(t *testing.T) {
+	g := sampleGenerated()
+	p := writeEditedReview(t, g, func(f *excelize.File) {
+		f.SetCellValue("ads_검수", "J2", model.StatusNeedsAdvertiser)
+	})
+	res, err := ReadReview(p, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Problems) != 1 || !strings.Contains(res.Problems[0], model.StatusNeedsAdvertiser) {
+		t.Fatalf("want 1 problem rejecting %q as 검수상태, got %v", model.StatusNeedsAdvertiser, res.Problems)
 	}
 }
 

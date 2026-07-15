@@ -338,6 +338,58 @@ func TestTitleCopyOverlap(t *testing.T) {
 	}
 }
 
+func TestTitleCopyQuestionRepeat(t *testing.T) {
+	// 0715 요청 2 실사례: title 질문에 copy가 다시 질문 → 답이 없다 → 경고
+	g := baseGenerated()
+	g.Ads[0].Title = "영어학원비 매달 부담되시나요?"
+	g.Ads[0].Copy = "매달 나가는 학원비, 집에서 줄일 방법이 궁금하지 않으세요?"
+	if !hasRule(Validate(g).Warnings, "title_copy_question_repeat") {
+		t.Fatal("want title_copy_question_repeat when both title and copy are questions")
+	}
+	// 물음표 없는 까-종결 질문도 질문형으로 판정
+	g = baseGenerated()
+	g.Ads[0].Title = "온라인 영어학습 무엇이 다를까"
+	g.Ads[0].Copy = "학원과 온라인 학습을 두루 비교해보고 싶으실까"
+	if !hasRule(Validate(g).Warnings, "title_copy_question_repeat") {
+		t.Fatal("want title_copy_question_repeat for 까-ending questions without ?")
+	}
+	// title 질문 + copy가 정보로 답함 → 통과
+	g = baseGenerated()
+	g.Ads[0].Title = "영어학원비 매달 부담되시나요?"
+	g.Ads[0].Copy = "집에서 하는 홈러닝으로 학습 비용을 크게 줄일 수 있어요"
+	if hasRule(Validate(g).Warnings, "title_copy_question_repeat") {
+		t.Fatal("question title answered by informative copy must pass")
+	}
+	// title이 질문이 아니면 질문형 copy 자체는 허용 (메시지 다양성)
+	g = baseGenerated()
+	g.Ads[0].Title = "집에서 시작하는 초등 영어 루틴"
+	g.Ads[0].Copy = "아이 영어, 무료 레벨테스트로 먼저 시작해 볼까요?"
+	if hasRule(Validate(g).Warnings, "title_copy_question_repeat") {
+		t.Fatal("question copy under a non-question title must pass")
+	}
+	// 이유 연결어미 "…니까"(ㅂ받침 없음)는 질문이 아니다 — 오탐 방지
+	g = baseGenerated()
+	g.Ads[0].Title = "영어학원비 매달 부담되시나요?"
+	g.Ads[0].Copy = "폭슬리가 먼저 말을 걸어주니까 아이가 편하게 대답해요"
+	if hasRule(Validate(g).Warnings, "title_copy_question_repeat") {
+		t.Fatal("causal 니까 ending must not be treated as a question")
+	}
+	// 합쇼체 의문 "…습니까"(ㅂ받침)는 물음표 없어도 질문
+	g = baseGenerated()
+	g.Ads[0].Title = "영어학원비 매달 부담되시나요?"
+	g.Ads[0].Copy = "집에서 하는 홈러닝이 정말 효과가 있습니까"
+	if !hasRule(Validate(g).Warnings, "title_copy_question_repeat") {
+		t.Fatal("want title_copy_question_repeat for ㅂ받침+니까 question ending")
+	}
+	// 물음표 없는 요-종결(볼까요)은 의도적으로 질문 판정 제외 — 보수적 휴리스틱 고정
+	g = baseGenerated()
+	g.Ads[0].Title = "영어학원비 매달 부담되시나요?"
+	g.Ads[0].Copy = "아이와 함께 집에서 홈러닝을 시작해 볼까요"
+	if hasRule(Validate(g).Warnings, "title_copy_question_repeat") {
+		t.Fatal("요-ending without ? must stay out of question detection")
+	}
+}
+
 func TestCopyCtaRatioOver30Warns(t *testing.T) {
 	g := baseGenerated()
 	g.Ads[0].Copy = "아이에게 맞는 영어 학습법을 지금 무료로 확인해보세요" // CTA ending, 1/1 = 100%
