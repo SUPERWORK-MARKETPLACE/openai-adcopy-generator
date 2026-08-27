@@ -50,25 +50,25 @@ func fullGenerated() *model.Generated {
 		}},
 
 		// 7 adgroups: 3 SKU × personas × funnel stages (②제품발견/③비교검토/⑤신청전환).
-		// 각 그룹의 검색어형 힌트는 40%±10(30~50%) — S2 keyword_searchform_ratio 통과형.
+		// 각 그룹의 검색어형 힌트는 70%±10(60~80%) — S2 keyword_searchform_ratio 통과형.
 		Adgroups: []model.Adgroup{
 			// SKU 생활비 혜택 카드
 			{CampaignName: camp, AdgroupName: "life_직장인_교통비_비교검토",
-				Keywords: kw("customer_data", "교통비 카드 비교", "직장인 생활비 카드", "통신 요금 아끼는 방법 있을까", "편의점 지출이 부담될 때", "정기구독 요금 줄이려면 뭐가 좋을까", "생활비 카드 어떻게 고를까")},
+				Keywords: kw("customer_data", "교통비 카드 비교", "직장인 생활비 카드", "직장인 통신 요금 할인 카드", "편의점 정기구독 할인 카드 비교", "편의점 지출이 부담될 때", "생활비 카드 어떻게 고를까")},
 			{CampaignName: camp, AdgroupName: "life_자취생_생활비_제품발견",
-				Keywords: kw("ai_inferred", "자취 생활비 절약", "1인가구 카드 추천", "편의점 지출 어떻게 줄일까", "혼자 살면서 통신비 아끼는 방법 있을까", "혼자 살면 생활비가 얼마나 들까", "자취 시작하면 카드 뭐가 필요할까")},
+				Keywords: kw("ai_inferred", "자취 생활비 절약", "1인가구 카드 추천", "자취생 편의점 할인 카드", "1인가구 통신비 절약 카드", "혼자 살면 생활비가 얼마나 들까", "자취 시작하면 카드 뭐가 필요할까")},
 			{CampaignName: camp, AdgroupName: "life_직장인_정기구독_신청전환",
-				Keywords: kw("ai_inferred", "정기구독 혜택 카드", "구독 서비스 요금이 부담될 때", "통신 요금 할인 카드 신청해도 될까", "직장인 정기구독 카드", "정기결제 혜택은 어떻게 챙길까")},
+				Keywords: kw("ai_inferred", "정기구독 혜택 카드", "구독 서비스 요금이 부담될 때", "정기결제 할인 카드 신청", "직장인 정기구독 카드", "정기결제 혜택은 어떻게 챙길까")},
 			// SKU 온라인 쇼핑 혜택 카드
 			{CampaignName: camp, AdgroupName: "online_맞벌이_온라인쇼핑_비교검토",
-				Keywords: kw("ai_inferred", "온라인 쇼핑 카드 비교", "온라인 결제 혜택 어떤 카드가 좋을까", "구독 결제가 많은데 카드 바꿔야 할까", "맞벌이 카드 추천", "온라인 쇼핑 지출이 늘어날 때")},
+				Keywords: kw("ai_inferred", "온라인 쇼핑 카드 비교", "맞벌이 온라인 결제 할인 카드", "구독 결제가 많은데 카드 바꿔야 할까", "맞벌이 카드 추천", "온라인 쇼핑 지출이 늘어날 때")},
 			{CampaignName: camp, AdgroupName: "online_사회초년생_구독결제_신청전환",
-				Keywords: kw("ai_inferred", "구독 결제 카드 신청", "사회초년생 첫 카드 뭐가 좋을까", "사회초년생 첫 카드", "구독 할인 혜택은 어떻게 신청할까", "카드 신청 전에 뭘 확인해야 할까")},
+				Keywords: kw("ai_inferred", "구독 결제 카드 신청", "사회초년생 구독 할인 카드", "사회초년생 첫 카드", "구독 할인 혜택은 어떻게 신청할까", "카드 신청 전에 뭘 확인해야 할까")},
 			// SKU 여행·해외결제 혜택 카드
 			{CampaignName: camp, AdgroupName: "travel_해외여행객_해외결제_제품발견",
-				Keywords: kw("customer_data", "해외여행 갈 때 카드 어떻게 준비할까", "항공 마일리지 카드", "숙박 예약 할인 받으려면 뭐가 필요할까", "해외여행 카드 추천", "해외 결제 수수료 얼마나 나올까")},
+				Keywords: kw("customer_data", "해외여행 갈 때 카드 어떻게 준비할까", "항공 마일리지 카드", "해외 결제 수수료 할인 카드", "해외여행 카드 추천", "해외 결제 수수료 얼마나 나올까")},
 			{CampaignName: camp, AdgroupName: "travel_해외여행객_항공숙박_신청전환",
-				Keywords: kw("ai_inferred", "해외 결제 카드 신청", "항공권 할인 카드", "호텔 예약 전에 카드 신청해도 될까", "출국 전에 카드 준비 뭐가 필요할까", "해외에서 카드 쓸 때 수수료 아낄 수 있을까")},
+				Keywords: kw("ai_inferred", "해외 결제 카드 신청", "항공권 할인 카드", "호텔 예약 할인 카드 신청", "출국 전에 카드 준비 뭐가 필요할까", "해외에서 카드 쓸 때 수수료 아낄 수 있을까")},
 		},
 
 		// 13 ads across the 7 groups; distinct personas/stages → distinct copy.

@@ -18,12 +18,12 @@ func sampleGenerated() *model.Generated {
 			BudgetType: "daily", LaunchDate: "2026-07-01", EndDate: "2026-07-31",
 			Objective: "Views", TargetCountries: []string{"KR"}}},
 		Adgroups: []model.Adgroup{{CampaignName: "01_학습자료", AdgroupName: "01_훈련앱",
-			// 검색어형 2/5 = 40% — S2 권장 범위(30~50%) 안.
+			// 검색어형 3/5 = 60% — S2 권장 범위(60~80%) 안.
 			Keywords: []model.Keyword{
 				{Text: "초등 영어 앱 추천", Origin: "customer_data"},
 				{Text: "초등 영어 단어 어플", Origin: "ai_inferred"},
 				{Text: "아이 발음 교정 어떻게 시작할까", Origin: "ai_inferred"},
-				{Text: "매일 영어 훈련 습관 들이려면 뭐가 좋을까", Origin: "ai_inferred"},
+				{Text: "초등 영어 매일 훈련 습관 만들기", Origin: "ai_inferred"},
 				{Text: "아이가 영어 단어를 자꾸 까먹을 때", Origin: "ai_inferred"},
 			},
 			Trace: model.Trace{SourceType: "브리프", GenerationBasis: "퍼널=제품발견", ConfidenceScore: 0.9}}},
