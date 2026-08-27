@@ -132,16 +132,20 @@ func textFindings(g *model.Generated, r *Report) {
 				}
 			}
 		}
-		// S2: search-form hints should be 40%±10 (30~50%) of Korean hints per
-		// adgroup — question/situation forms carry the rest. Both bounds warn.
-		// Heuristic on Korean hints only (English hints are exempt), warning only.
-		if koTotal > 0 && (koSearch*10 < koTotal*3 || koSearch*2 > koTotal) {
+		// S2 (0827 개정): search-form hints should be 70%±10 (60~80%) of Korean
+		// hints per adgroup — question/situation forms carry the rest. Both
+		// bounds warn. Heuristic on Korean hints only (English hints are
+		// exempt), warning only.
+		if koTotal > 0 && (koSearch*10 < koTotal*6 || koSearch*10 > koTotal*8) {
 			r.warn("adgroups", ag.AdgroupName, "keywords", "keyword_searchform_ratio",
-				fmt.Sprintf("검색어형 힌트 %d/%d — 권장 40%%±10(30~50%%)", koSearch, koTotal))
+				fmt.Sprintf("검색어형 힌트 %d/%d — 권장 70%%±10(60~80%%)", koSearch, koTotal))
 		}
 		// R5: CTA-style endings (…세요) capped at 30% of copies per adgroup.
+		// 0827: 그룹당 1건은 항상 허용 — 광고 3개 구성에서는 30% 상한이 CTA를
+		// 구조적으로 0건 강제해(1/3=33%) 행동유도형이 전역에서 사라진다
+		// (0720 "상한≠금지"와 충돌). 2건부터 비율을 본다.
 		if total := totalCopies[ag.AdgroupName]; total > 0 {
-			if cta := ctaCopies[ag.AdgroupName]; cta*10 > total*3 {
+			if cta := ctaCopies[ag.AdgroupName]; cta > 1 && cta*10 > total*3 {
 				r.warn("adgroups", ag.AdgroupName, "copy", "copy_cta_ratio_30",
 					fmt.Sprintf("CTA형 종결 카피 %d/%d — 광고그룹당 30%% 이하", cta, total))
 			}

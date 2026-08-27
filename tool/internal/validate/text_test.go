@@ -22,8 +22,8 @@ func baseGenerated() *model.Generated {
 			BudgetType: "daily", LaunchDate: "2026-07-01", EndDate: "2026-07-31",
 			Objective: "Views", TargetCountries: []string{"KR"}}},
 		Adgroups: []model.Adgroup{{CampaignName: "01_학습자료", AdgroupName: "훈련앱_초등학부모_반복훈련필요_제품발견",
-			// 검색어형 2/5 = 40% — S2 권장 범위(30~50%) 안.
-			Keywords: kw("초등 영어 어떻게 시작할까", "아이 영어 흥미 붙이려면 뭐가 좋을까",
+			// 검색어형 3/5 = 60% — S2 권장 범위(60~80%) 안.
+			Keywords: kw("초등 영어 어떻게 시작할까", "초등 영어 흥미 붙이는 학습법",
 				"초등 영어 반복 훈련 앱 추천", "초등 영어 단어 암기 앱",
 				"아이가 영어를 자꾸 까먹을 때")}},
 		Ads: []model.Ad{{AdName: "KID_01_001", AdgroupName: "훈련앱_초등학부모_반복훈련필요_제품발견",
@@ -166,7 +166,7 @@ func TestKeywordDuplicateGlobalScope(t *testing.T) {
 }
 
 func TestKeywordSearchformRatio(t *testing.T) {
-	// S2: 검색어형 40%±10(30~50%) 밖이면 양측 모두 경고.
+	// S2(0827 개정): 검색어형 70%±10(60~80%) 밖이면 양측 모두 경고.
 	// mkHints: 검색어형 search개 + 문장형 sentence개.
 	mkHints := func(search, sentence int) []model.Keyword {
 		var texts []string
@@ -178,18 +178,18 @@ func TestKeywordSearchformRatio(t *testing.T) {
 		}
 		return kw(texts...)
 	}
-	// 검색어형 1/5 = 20% < 30% → 경고 (하한)
+	// 검색어형 1/5 = 20% < 60% → 경고 (하한)
 	g := baseGenerated()
 	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 공부가 막막할 때",
 		"집에서 영어 시작해도 될까", "영어 흥미 붙이려면 뭐가 좋을까", "아이가 영어를 자꾸 까먹을 때")
 	if !hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
-		t.Fatal("want keyword_searchform_ratio when search-form hints are below 30%")
+		t.Fatal("want keyword_searchform_ratio when search-form hints are below 60%")
 	}
-	// 포함 경계: 정확히 30%(3/10)·50%(5/10)는 통과, 20%(2/10)·60%(6/10)는 경고
+	// 포함 경계: 정확히 60%(6/10)·80%(8/10)는 통과, 50%(5/10)·90%(9/10)는 경고
 	for _, tc := range []struct {
 		search, sentence int
 		warn             bool
-	}{{2, 8, true}, {3, 7, false}, {5, 5, false}, {6, 4, true}} {
+	}{{5, 5, true}, {6, 4, false}, {8, 2, false}, {9, 1, true}} {
 		g = baseGenerated()
 		g.Adgroups[0].Keywords = mkHints(tc.search, tc.sentence)
 		got := hasRule(Validate(g).Warnings, "keyword_searchform_ratio")
@@ -197,19 +197,19 @@ func TestKeywordSearchformRatio(t *testing.T) {
 			t.Fatalf("search-form %d/%d: warn=%v, want %v", tc.search, tc.search+tc.sentence, got, tc.warn)
 		}
 	}
-	// 검색어형 2/5 = 40% → 경고 없음
-	g = baseGenerated()
-	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 단어 어플 추천",
-		"아이 영어 어떻게 시작할까", "영어 공부가 막막할 때", "집에서 영어 시작해도 될까")
-	if hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
-		t.Fatal("40% search-form must not warn")
-	}
-	// 검색어형 3/5 = 60% > 50% → 경고 (상한)
+	// 검색어형 3/5 = 60% → 경고 없음
 	g = baseGenerated()
 	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 단어 어플 추천", "초등 영어 무료 교재",
 		"아이 영어 어떻게 시작할까", "영어 공부가 막막할 때")
+	if hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
+		t.Fatal("60% search-form must not warn")
+	}
+	// 검색어형 5/5 = 100% > 80% → 경고 (상한)
+	g = baseGenerated()
+	g.Adgroups[0].Keywords = kw("초등 영어 학습지 추천", "영어 단어 어플 추천", "초등 영어 무료 교재",
+		"초등 영어 문법 교재 비교", "초등 영어 듣기 학습 방법")
 	if !hasRule(Validate(g).Warnings, "keyword_searchform_ratio") {
-		t.Fatal("want keyword_searchform_ratio when search-form hints exceed 50%")
+		t.Fatal("want keyword_searchform_ratio when search-form hints exceed 80%")
 	}
 	// 영어 힌트는 판정 제외 — 영어만 있으면 경고 없음
 	g = baseGenerated()
@@ -392,9 +392,40 @@ func TestTitleCopyQuestionRepeat(t *testing.T) {
 
 func TestCopyCtaRatioOver30Warns(t *testing.T) {
 	g := baseGenerated()
-	g.Ads[0].Copy = "아이에게 맞는 영어 학습법을 지금 무료로 확인해보세요" // CTA ending, 1/1 = 100%
+	second := g.Ads[0]
+	second.AdName = "KID_01_002"
+	second.Title = "아이 영어 수준이 궁금하다면"
+	g.Ads = append(g.Ads, second)
+	g.Ads[0].Copy = "아이에게 맞는 영어 학습법을 지금 무료로 확인해보세요" // CTA ending
+	g.Ads[1].Copy = "무료 레벨테스트로 아이 영어 수준을 진단해보세요"     // CTA ending, 2/2 = 100%
 	if !hasRule(Validate(g).Warnings, "copy_cta_ratio_30") {
 		t.Fatal("want copy_cta_ratio_30 for 100% CTA endings")
+	}
+}
+
+// 0827: 그룹당 CTA 1건은 비율과 무관하게 허용 — 광고 3개 구성에서 30% 상한이
+// 행동유도형을 구조적으로 0건 강제하던 문제(0720 "상한≠금지")를 막는다.
+func TestCopyCtaSingleAlwaysAllowed(t *testing.T) {
+	g := baseGenerated()
+	base := g.Ads[0]
+	g.Ads = nil
+	for i := 0; i < 3; i++ {
+		ad := base
+		ad.AdName = fmt.Sprintf("KID_01_%03d", i+1)
+		ad.Title = fmt.Sprintf("그룹 내 서로 다른 제목 %d", i+1)
+		ad.Copy = "집에서 매일 이어가는 초등 영어 학습 루틴이에요"
+		if i == 0 {
+			ad.Copy = "아이에게 맞는지 무료학습으로 먼저 확인해보세요" // CTA 1/3 = 33%
+		}
+		g.Ads = append(g.Ads, ad)
+	}
+	if hasRule(Validate(g).Warnings, "copy_cta_ratio_30") {
+		t.Fatal("single CTA copy in a group must not warn (1/3)")
+	}
+	// 같은 3개 구성이라도 2건이면 경고 (2/3 = 67%)
+	g.Ads[1].Copy = "무료 레벨테스트로 아이 영어 수준을 진단해보세요"
+	if !hasRule(Validate(g).Warnings, "copy_cta_ratio_30") {
+		t.Fatal("want copy_cta_ratio_30 for 2/3 CTA copies")
 	}
 }
 
@@ -443,14 +474,22 @@ func TestCopyCtaRatioBoundary(t *testing.T) {
 
 func TestCopyCtaEndingPunctuation(t *testing.T) {
 	// 구두점으로 끝나는 CTA(…세요.)도 CTA로 집계해야 한다.
-	g := baseGenerated()
-	g.Ads[0].Copy = "아이에게 맞는 영어 학습법을 지금 확인해보세요." // 1/1 = 100%
+	// 1건은 항상 허용되므로(0827) 2건으로 집계 여부를 검증한다.
+	twoCopies := func(a, b string) *model.Generated {
+		g := baseGenerated()
+		second := g.Ads[0]
+		second.AdName = "KID_01_002"
+		second.Title = "아이 영어 수준이 궁금하다면"
+		g.Ads = append(g.Ads, second)
+		g.Ads[0].Copy, g.Ads[1].Copy = a, b
+		return g
+	}
+	g := twoCopies("아이에게 맞는 영어 학습법을 지금 확인해보세요.", "무료 레벨테스트로 영어 수준을 진단해보세요.")
 	if !hasRule(Validate(g).Warnings, "copy_cta_ratio_30") {
 		t.Fatal("want copy_cta_ratio_30 for punctuated CTA ending (…세요.)")
 	}
 	// 질문형(…세요?)은 CTA가 아니다.
-	g = baseGenerated()
-	g.Ads[0].Copy = "아이 영어 학습 시작이 아직도 고민되지 않으세요?"
+	g = twoCopies("아이 영어 학습 시작이 아직도 고민되지 않으세요?", "영어 교재만으로 부족하다고 느끼지 않으세요?")
 	if hasRule(Validate(g).Warnings, "copy_cta_ratio_30") {
 		t.Fatal("question form (…세요?) must not count as CTA")
 	}
