@@ -113,21 +113,96 @@ func TestWriteReviewWorkbook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sumRows) < 8+len(model.AllStatuses)+1 {
-		t.Fatalf("요약 rows = %d, want >= %d (status legend rows)", len(sumRows), 8+len(model.AllStatuses)+1)
+	statusRow := summaryRowIndex(sumRows, "상태값")
+	if statusRow < 0 {
+		t.Fatalf("요약 시트에 상태값 행이 없습니다: %v", sumRows)
 	}
-	if sumRows[7][0] != "상태값" {
-		t.Fatalf("요약 8행 = %q, want 상태값", sumRows[7][0])
+	if len(sumRows) < statusRow+len(model.AllStatuses)+2 {
+		t.Fatalf("요약 rows = %d, want >= %d (status legend rows)", len(sumRows), statusRow+len(model.AllStatuses)+2)
 	}
 	for i, st := range model.AllStatuses {
-		row := sumRows[8+i]
+		row := sumRows[statusRow+1+i]
 		if row[0] != "상태값: "+st || len(row) < 2 || row[1] == "" {
-			t.Fatalf("요약 %d행 = %v, want %q + 설명", 9+i, row, "상태값: "+st)
+			t.Fatalf("요약 %d행 = %v, want %q + 설명", statusRow+2+i, row, "상태값: "+st)
 		}
 	}
-	blank := sumRows[8+len(model.AllStatuses)]
+	blank := sumRows[statusRow+1+len(model.AllStatuses)]
 	if blank[0] != "상태값: (빈칸)" || len(blank) < 2 || blank[1] == "" {
 		t.Fatalf("요약 빈칸 상태 설명 행 = %v, want 상태값: (빈칸) + 설명", blank)
+	}
+}
+
+// summaryRowIndex returns the 요약 row whose 항목 칸이 label과 같은 행 번호
+// (0-based), 없으면 -1.
+func summaryRowIndex(rows [][]string, label string) int {
+	for i, r := range rows {
+		if len(r) > 0 && r[0] == label {
+			return i
+		}
+	}
+	return -1
+}
+
+// TestSummaryFunnelDistribution: 요약 시트는 6개 고정 토큰의 퍼널 분포를 순서
+// 대로 보고한다. 0건 단계도 0으로 출력해야 운영자가 "정당한 미생성"과 "조용한
+// 누락"을 구분한다(9차). 판정 불가 행은 미분류로 따로 센다.
+func TestSummaryFunnelDistribution(t *testing.T) {
+	g := sampleGenerated()
+	g.Adgroups[0].AdgroupName = "훈련앱_초등학부모_무료체험신청_신청전환"
+	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
+	g.Ads[0].Trace.GenerationBasis = "SKU=훈련앱; 퍼널=사용도움; 메시지=효과"
+	// 퍼널= 없는 광고 1건 → 미분류로 집계.
+	g.Ads = append(g.Ads, model.Ad{AdName: "KID_01_002", AdgroupName: g.Adgroups[0].AdgroupName,
+		Title: "매일 10분 영어 훈련 루틴",
+		Copy:  "발음과 단어를 매일 10분씩 반복하는 훈련 루틴",
+		Link:  "https://www.example.com/promo", ImageLink: "https://img.example.com/a.png",
+		Trace: model.Trace{SourceType: "브리프", GenerationBasis: "SKU=훈련앱"}})
+
+	out := filepath.Join(t.TempDir(), "review.xlsx")
+	if err := WriteReview(g, nil, out); err != nil {
+		t.Fatal(err)
+	}
+	f, err := excelize.OpenFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	sumRows, err := f.GetRows("요약")
+	if err != nil {
+		t.Fatal(err)
+	}
+	value := func(stage string) string {
+		i := summaryRowIndex(sumRows, "퍼널 분포: "+stage)
+		if i < 0 {
+			t.Fatalf("요약 시트에 %q 행이 없습니다", "퍼널 분포: "+stage)
+		}
+		if len(sumRows[i]) < 2 {
+			t.Fatalf("퍼널 분포 %s 행에 값이 없습니다: %v", stage, sumRows[i])
+		}
+		return sumRows[i][1]
+	}
+	want := map[string]string{
+		"문제정의":   "광고그룹 0개 / 광고 0개", // 0건 단계도 반드시 출력
+		"제품발견":   "광고그룹 0개 / 광고 0개",
+		"비교검토":   "광고그룹 0개 / 광고 0개",
+		"단일제품평가": "광고그룹 0개 / 광고 0개",
+		"신청전환":   "광고그룹 1개 / 광고 0개", // 이름 슬롯으로 집계
+		"사용도움":   "광고그룹 0개 / 광고 1개", // generation_basis 퍼널=로 집계
+		"미분류":    "광고그룹 0개 / 광고 1개", // 퍼널= 없는 광고
+	}
+	for _, stage := range append(append([]string{}, model.FunnelStages...), "미분류") {
+		if got := value(stage); got != want[stage] {
+			t.Errorf("퍼널 분포 %s = %q, want %q", stage, got, want[stage])
+		}
+	}
+	// 6개 토큰은 헌장 순서대로 나열된다.
+	prev := -1
+	for _, stage := range model.FunnelStages {
+		i := summaryRowIndex(sumRows, "퍼널 분포: "+stage)
+		if i <= prev {
+			t.Fatalf("퍼널 분포 행 순서가 고정 토큰 순서와 다릅니다: %s(%d) after %d", stage, i, prev)
+		}
+		prev = i
 	}
 }
 

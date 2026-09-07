@@ -44,20 +44,31 @@ func TestAdgroupNameFormatWarning(t *testing.T) {
 	if hasRule(r.Errors, "adgroup_name_format") {
 		t.Fatal("adgroup_name_format must be a warning, never an error")
 	}
+	// 슬롯 수 부족은 퍼널 슬롯 판정 이전 단계 — 토큰 오류로 번지지 않는다.
+	if hasRule(r.Errors, "adgroup_name_funnel_token") {
+		t.Fatal("slot-count warning must not raise adgroup_name_funnel_token")
+	}
+	// 퍼널 슬롯 토큰 위반은 ERROR — adgroup_name은 업로드 파일에 그대로 실린다(9차).
 	g = baseGenerated()
 	g.Adgroups[0].AdgroupName = "훈련앱_초등학부모_반복훈련필요_문제발견" // 고정 토큰 아님
 	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
-	if !hasRule(Validate(g).Warnings, "adgroup_name_format") {
-		t.Fatal("want adgroup_name_format warning for non-fixed funnel token")
+	r = Validate(g)
+	if !hasRule(r.Errors, "adgroup_name_funnel_token") {
+		t.Fatal("want adgroup_name_funnel_token error for non-fixed funnel token")
+	}
+	if hasRule(r.Warnings, "adgroup_name_funnel_token") {
+		t.Fatal("adgroup_name_funnel_token must be an error, never a warning")
 	}
 	g = baseGenerated() // fixture is already 상품/SKU_타깃_세부의도_구매여정
-	if hasRule(Validate(g).Warnings, "adgroup_name_format") {
+	r = Validate(g)
+	if hasRule(r.Warnings, "adgroup_name_format") || hasRule(r.Errors, "adgroup_name_funnel_token") {
 		t.Fatal("clean D10-format name must not warn")
 	}
 	g = baseGenerated()
 	g.Adgroups[0].AdgroupName = "훈련앱_초등학부모_반복훈련필요_문제정의_2" // 중복 순번 접미
 	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
-	if hasRule(Validate(g).Warnings, "adgroup_name_format") {
+	r = Validate(g)
+	if hasRule(r.Warnings, "adgroup_name_format") || hasRule(r.Errors, "adgroup_name_funnel_token") {
 		t.Fatal("numeric dedup suffix must pass — funnel token judged on previous slot")
 	}
 	g = baseGenerated()
@@ -84,6 +95,97 @@ func TestGenerationBasisFunnelToken(t *testing.T) {
 	if hasRule(Validate(g).Warnings, "generation_basis_funnel_token") {
 		t.Fatal("trace without 퍼널= must be skipped")
 	}
+}
+
+func TestGenerationBasisFunnelMissing(t *testing.T) {
+	// 근거는 적었는데 퍼널 항목만 빠진 경우 → 경고 (9차 — 단계 분류가 조용히 빔)
+	g := baseGenerated()
+	g.Adgroups[0].Trace.GenerationBasis = "SKU=훈련앱; 메시지=효과"
+	r := Validate(g)
+	if !hasRule(r.Warnings, "generation_basis_funnel_missing") {
+		t.Fatal("want generation_basis_funnel_missing for basis without 퍼널=")
+	}
+	if hasRule(r.Errors, "generation_basis_funnel_missing") {
+		t.Fatal("generation_basis_funnel_missing must be a warning, never an error")
+	}
+	g = baseGenerated()
+	g.Ads[0].Trace.GenerationBasis = "SKU=훈련앱; 메시지=효과"
+	if !hasRule(Validate(g).Warnings, "generation_basis_funnel_missing") {
+		t.Fatal("want generation_basis_funnel_missing for an ad basis without 퍼널=")
+	}
+	g = baseGenerated()
+	g.Ads[0].Trace.GenerationBasis = "SKU=훈련앱; 퍼널=제품발견; 메시지=효과"
+	if hasRule(Validate(g).Warnings, "generation_basis_funnel_missing") {
+		t.Fatal("basis with 퍼널= must pass")
+	}
+	// generation_basis 자체가 공란 → 이 규칙 대상 아님(근거 기록 여부는 별도 영역)
+	if hasRule(Validate(baseGenerated()).Warnings, "generation_basis_funnel_missing") {
+		t.Fatal("blank generation_basis must be exempt")
+	}
+}
+
+func TestFunnelStageMerged(t *testing.T) {
+	// 신청전환 그룹에 사용도움 광고가 섞이면 그룹당 1건 경고 (9차)
+	secondAd := func(g *model.Generated, adName, basis string) {
+		ad := g.Ads[0]
+		ad.AdName = adName
+		ad.Title = "완전히 다른 두 번째 광고 제목"
+		ad.Copy = "퍼널 검사를 위해 내용을 완전히 바꾼 두 번째 카피예요"
+		ad.Trace.GenerationBasis = basis
+		g.Ads = append(g.Ads, ad)
+	}
+	g := baseGenerated()
+	g.Adgroups[0].AdgroupName = "훈련앱_초등학부모_무료체험신청_신청전환"
+	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
+	g.Ads[0].Trace.GenerationBasis = "SKU=훈련앱; 퍼널=사용도움"
+	secondAd(g, "KID_01_002", "SKU=훈련앱; 퍼널=사용도움") // 같은 그룹 → 경고는 여전히 1건
+	r := Validate(g)
+	if n := countRule(r.Warnings, "funnel_stage_merged"); n != 1 {
+		t.Fatalf("funnel_stage_merged = %d건, want 1 (그룹당 1회)", n)
+	}
+	if hasRule(r.Errors, "funnel_stage_merged") {
+		t.Fatal("funnel_stage_merged must be a warning, never an error")
+	}
+	// 그룹 자신의 basis가 사용도움, 이름 슬롯이 신청전환 → 경고
+	g = baseGenerated()
+	g.Adgroups[0].AdgroupName = "훈련앱_초등학부모_무료체험신청_신청전환"
+	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
+	g.Adgroups[0].Trace.GenerationBasis = "SKU=훈련앱; 퍼널=사용도움"
+	if !hasRule(Validate(g).Warnings, "funnel_stage_merged") {
+		t.Fatal("want funnel_stage_merged when the group basis and name slot split the two stages")
+	}
+	// 같은 단계만 있으면 미발생
+	g = baseGenerated()
+	g.Adgroups[0].AdgroupName = "훈련앱_초등학부모_무료체험신청_신청전환"
+	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
+	g.Ads[0].Trace.GenerationBasis = "SKU=훈련앱; 퍼널=신청전환"
+	if hasRule(Validate(g).Warnings, "funnel_stage_merged") {
+		t.Fatal("single-stage group must not warn")
+	}
+	// 문제정의+제품발견 병합은 헌장 §5가 허용 → 미발생(오탐 금지)
+	g = baseGenerated() // 이름 슬롯 = 제품발견
+	g.Ads[0].Trace.GenerationBasis = "SKU=훈련앱; 퍼널=문제정의"
+	if hasRule(Validate(g).Warnings, "funnel_stage_merged") {
+		t.Fatal("문제정의+제품발견 merge is allowed — must not warn")
+	}
+	// 사용도움 단독 그룹도 미발생
+	g = baseGenerated()
+	g.Adgroups[0].AdgroupName = "훈련앱_초등학부모_학습습관관리_사용도움"
+	g.Ads[0].AdgroupName = g.Adgroups[0].AdgroupName
+	g.Ads[0].Trace.GenerationBasis = "SKU=훈련앱; 퍼널=사용도움"
+	if hasRule(Validate(g).Warnings, "funnel_stage_merged") {
+		t.Fatal("사용도움-only group must not warn")
+	}
+}
+
+func countRule(fs []Finding, rule string) int {
+	n := 0
+	for _, f := range fs {
+		if f.Rule == rule {
+			n++
+		}
+	}
+	return n
 }
 
 func TestSourceExcerptMissing(t *testing.T) {

@@ -148,6 +148,15 @@ func writeSummary(f *excelize.File, g *model.Generated, findings map[string][]st
 		{"광고 수", len(g.Ads)},
 		{"자동 검수 플래그 행(광고)", needs},
 		{"제외 사유 있는 광고", excluded},
+	}
+	// 퍼널 단계 분포 — 6개 고정 토큰을 순서대로 보고한다. 0건 단계도 0으로
+	// 출력해야 운영자가 "정당한 미생성"과 "조용한 누락"을 구분할 수 있다(9차).
+	agDist, adDist := funnelDistribution(g)
+	for _, s := range append(append([]string{}, model.FunnelStages...), funnelUnclassified) {
+		rows = append(rows, []any{"퍼널 분포: " + s,
+			fmt.Sprintf("광고그룹 %d개 / 광고 %d개", agDist[s], adDist[s])})
+	}
+	rows = append(rows, [][]any{
 		{"안내", "validation_status 열은 에이전트 자동 검수 결과(읽기 전용)입니다. '" +
 			model.StatusNeedsAdvertiser + "' 등 플래그는 이 열에서 확인하세요. " +
 			StatusColumnHeader + " 열은 광고주 검수 결과 입력란으로 전 행 빈칸이 기본입니다 — " +
@@ -158,12 +167,77 @@ func writeSummary(f *excelize.File, g *model.Generated, findings map[string][]st
 		{"상태값: " + model.StatusRejected, "최종 파일에서 제외(재생성 없음)"},
 		{"상태값: " + model.StatusRegenerate, "의견 반영 재생성 후 재검수"},
 		{"상태값: (빈칸)", "미검수로 최종 파일에서 제외"},
-	}
+	}...)
 	for i, r := range rows {
 		setRow(f, "요약", i+1, r)
 	}
 	f.SetColWidth("요약", "A", "A", 24)
 	f.SetColWidth("요약", "B", "B", 80)
+}
+
+// funnelUnclassified: 퍼널 단계를 읽지 못한 행의 집계 칸(6단계 합계와 분리).
+const funnelUnclassified = "미분류"
+
+// funnelDistribution counts adgroups and ads per fixed funnel stage. 광고그룹은
+// adgroup_name의 구매여정 슬롯, 광고는 generation_basis의 퍼널= 값으로 센다.
+// 판정 불가 행은 funnelUnclassified로 따로 센다.
+func funnelDistribution(g *model.Generated) (adgroups, ads map[string]int) {
+	adgroups, ads = map[string]int{}, map[string]int{}
+	for _, ag := range g.Adgroups {
+		adgroups[funnelStageOf(adgroupFunnelSlot(ag.AdgroupName))]++
+	}
+	for _, ad := range g.Ads {
+		ads[funnelStageOf(funnelFromBasis(ad.Trace.GenerationBasis))]++
+	}
+	return adgroups, ads
+}
+
+// funnelStageOf normalizes a raw value to one of model.FunnelStages, or
+// funnelUnclassified when it is not a fixed token.
+func funnelStageOf(v string) string {
+	for _, s := range model.FunnelStages {
+		if v == s {
+			return s
+		}
+	}
+	return funnelUnclassified
+}
+
+// adgroupFunnelSlot returns the 구매여정 슬롯 of adgroup_name — the last "_"
+// slot, or the one before a purely numeric dedup suffix (validate의 형식 검사와
+// 동일 규칙).
+func adgroupFunnelSlot(name string) string {
+	slots := strings.Split(name, "_")
+	if n := len(slots); n > 1 && isNumericSlot(slots[n-1]) {
+		slots = slots[:n-1]
+	}
+	return slots[len(slots)-1]
+}
+
+func isNumericSlot(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// funnelFromBasis returns the 퍼널= value recorded in generation_basis ("" when
+// absent). 구분자 `;,|` 앞까지 자르고 원문자 접두(①~⑥)는 떼어낸다.
+func funnelFromBasis(basis string) string {
+	i := strings.Index(basis, "퍼널=")
+	if i < 0 {
+		return ""
+	}
+	v := basis[i+len("퍼널="):]
+	if j := strings.IndexAny(v, ";,|"); j >= 0 {
+		v = v[:j]
+	}
+	return strings.TrimLeft(strings.TrimSpace(v), "①②③④⑤⑥")
 }
 
 func addStatusDropdown(f *excelize.File, sheet, col string, n int) error {
