@@ -26,6 +26,51 @@ var AllStatuses = []string{StatusApproved, StatusApprovedEdited, StatusRejected,
 // last slot (or the slot before a numeric dedup suffix) must be one of these.
 var FunnelStages = []string{"문제정의", "제품발견", "비교검토", "단일제품평가", "신청전환", "사용도움"}
 
+// FunnelFromBasis extracts the 퍼널= value recorded in generation_basis.
+// ok=false when the trace has no 퍼널= entry. 값은 구분자 `;,|` 앞까지 자르고
+// 원문자 접두(①~⑥)를 떼어낸다. validate의 형식 검사와 review의 분포 집계가
+// 같은 규칙을 쓰도록 여기 한 곳에만 둔다.
+func FunnelFromBasis(basis string) (string, bool) {
+	i := strings.Index(basis, "퍼널=")
+	if i < 0 {
+		return "", false
+	}
+	v := basis[i+len("퍼널="):]
+	if j := strings.IndexAny(v, ";,|"); j >= 0 {
+		v = v[:j]
+	}
+	return strings.TrimLeft(strings.TrimSpace(v), "①②③④⑤⑥"), true
+}
+
+// AdgroupNameSlots splits adgroup_name on "_" and drops a purely numeric dedup
+// suffix — 순번 접미는 내용 슬롯이 아니다(상품_타깃_구매여정_2는 3슬롯).
+func AdgroupNameSlots(name string) []string {
+	slots := strings.Split(name, "_")
+	if n := len(slots); n > 1 && isNumericSlot(slots[n-1]) {
+		slots = slots[:n-1]
+	}
+	return slots
+}
+
+// AdgroupFunnelSlot returns the 구매여정 슬롯 of adgroup_name — the last content
+// slot per AdgroupNameSlots.
+func AdgroupFunnelSlot(name string) string {
+	slots := AdgroupNameSlots(name)
+	return slots[len(slots)-1]
+}
+
+func isNumericSlot(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // ReviewTriggerTokens: if a merged validation_status cell contains any of
 // these, the row is an automatic-check flag row (R6) — counted in the review
 // summary and surfaced as flagged_approved when overridden with 무수정 승인.

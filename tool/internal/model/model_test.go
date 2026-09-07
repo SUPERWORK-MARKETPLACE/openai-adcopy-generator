@@ -110,3 +110,41 @@ func TestAllStatusesExcludeNeedsAdvertiser(t *testing.T) {
 		}
 	}
 }
+
+// 퍼널 파싱은 validate(형식 검사)와 review(분포 집계)가 공유하는 단일 규칙이다 —
+// 두 곳이 갈라지지 않도록 여기서 계약을 고정한다.
+func TestFunnelFromBasis(t *testing.T) {
+	cases := []struct {
+		basis string
+		want  string
+		ok    bool
+	}{
+		{"SKU=훈련앱; 퍼널=제품발견; 메시지=효과", "제품발견", true},
+		{"퍼널=②제품발견", "제품발견", true},
+		{"퍼널= 신청전환 ; 세부의도=조건확인", "신청전환", true},
+		{"SKU=훈련앱; 메시지=효과", "", false},
+		{"", "", false},
+	}
+	for _, c := range cases {
+		got, ok := FunnelFromBasis(c.basis)
+		if got != c.want || ok != c.ok {
+			t.Fatalf("FunnelFromBasis(%q) = (%q, %v), want (%q, %v)", c.basis, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+func TestAdgroupFunnelSlot(t *testing.T) {
+	cases := []struct{ name, want string }{
+		{"훈련앱_초등학부모_반복훈련필요_제품발견", "제품발견"},
+		{"훈련앱_초등학부모_반복훈련필요_제품발견_2", "제품발견"}, // 순번 접미는 내용 슬롯이 아니다
+		{"훈련앱_초등학부모_문제발견", "문제발견"},
+	}
+	for _, c := range cases {
+		if got := AdgroupFunnelSlot(c.name); got != c.want {
+			t.Fatalf("AdgroupFunnelSlot(%q) = %q, want %q", c.name, got, c.want)
+		}
+	}
+	if n := len(AdgroupNameSlots("훈련앱_초등학부모_반복훈련필요_제품발견_2")); n != 4 {
+		t.Fatalf("순번 접미 제거 후 4슬롯이어야 한다, got %d", n)
+	}
+}
