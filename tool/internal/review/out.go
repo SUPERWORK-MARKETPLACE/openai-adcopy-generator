@@ -184,10 +184,11 @@ const funnelUnclassified = "미분류"
 func funnelDistribution(g *model.Generated) (adgroups, ads map[string]int) {
 	adgroups, ads = map[string]int{}, map[string]int{}
 	for _, ag := range g.Adgroups {
-		adgroups[funnelStageOf(adgroupFunnelSlot(ag.AdgroupName))]++
+		adgroups[funnelStageOf(model.AdgroupFunnelSlot(ag.AdgroupName))]++
 	}
 	for _, ad := range g.Ads {
-		ads[funnelStageOf(funnelFromBasis(ad.Trace.GenerationBasis))]++
+		v, _ := model.FunnelFromBasis(ad.Trace.GenerationBasis)
+		ads[funnelStageOf(v)]++
 	}
 	return adgroups, ads
 }
@@ -201,43 +202,6 @@ func funnelStageOf(v string) string {
 		}
 	}
 	return funnelUnclassified
-}
-
-// adgroupFunnelSlot returns the 구매여정 슬롯 of adgroup_name — the last "_"
-// slot, or the one before a purely numeric dedup suffix (validate의 형식 검사와
-// 동일 규칙).
-func adgroupFunnelSlot(name string) string {
-	slots := strings.Split(name, "_")
-	if n := len(slots); n > 1 && isNumericSlot(slots[n-1]) {
-		slots = slots[:n-1]
-	}
-	return slots[len(slots)-1]
-}
-
-func isNumericSlot(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
-}
-
-// funnelFromBasis returns the 퍼널= value recorded in generation_basis ("" when
-// absent). 구분자 `;,|` 앞까지 자르고 원문자 접두(①~⑥)는 떼어낸다.
-func funnelFromBasis(basis string) string {
-	i := strings.Index(basis, "퍼널=")
-	if i < 0 {
-		return ""
-	}
-	v := basis[i+len("퍼널="):]
-	if j := strings.IndexAny(v, ";,|"); j >= 0 {
-		v = v[:j]
-	}
-	return strings.TrimLeft(strings.TrimSpace(v), "①②③④⑤⑥")
 }
 
 func addStatusDropdown(f *excelize.File, sheet, col string, n int) error {

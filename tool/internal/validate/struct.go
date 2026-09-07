@@ -73,10 +73,10 @@ func structFindings(g *model.Generated, r *Report) {
 		checkFunnelBasisMissing(r, "adgroups", name, ag.Trace.GenerationBasis)
 		// 병합 감지용 퍼널 값 수집 — 이름의 구매여정 슬롯 + 그룹 자신의 basis.
 		stages := map[string]bool{}
-		if slots := adgroupNameSlots(name); len(slots) > 0 {
+		if slots := model.AdgroupNameSlots(name); len(slots) > 0 {
 			stages[slots[len(slots)-1]] = true
 		}
-		if v, ok := funnelFromBasis(ag.Trace.GenerationBasis); ok {
+		if v, ok := model.FunnelFromBasis(ag.Trace.GenerationBasis); ok {
 			stages[v] = true
 		}
 		funnelByAdgroup[name] = stages
@@ -111,7 +111,7 @@ func structFindings(g *model.Generated, r *Report) {
 		}
 		checkFunnelToken(r, "ads", ad.AdName, ad.Trace.GenerationBasis)
 		checkFunnelBasisMissing(r, "ads", ad.AdName, ad.Trace.GenerationBasis)
-		if v, ok := funnelFromBasis(ad.Trace.GenerationBasis); ok {
+		if v, ok := model.FunnelFromBasis(ad.Trace.GenerationBasis); ok {
 			if stages := funnelByAdgroup[ad.AdgroupName]; stages != nil {
 				stages[v] = true
 			}
@@ -127,25 +127,10 @@ const (
 	funnelUsageHelp  = "사용도움" // 이용·경험 정보 탐색
 )
 
-// funnelFromBasis extracts the 퍼널= value recorded in generation_basis.
-// ok=false when the trace has no 퍼널= entry. 값은 구분자 `;,|` 앞까지 자르고
-// 원문자 접두(①~⑥)를 떼어낸다.
-func funnelFromBasis(basis string) (string, bool) {
-	i := strings.Index(basis, "퍼널=")
-	if i < 0 {
-		return "", false
-	}
-	v := basis[i+len("퍼널="):]
-	if j := strings.IndexAny(v, ";,|"); j >= 0 {
-		v = v[:j]
-	}
-	return strings.TrimLeft(strings.TrimSpace(v), "①②③④⑤⑥"), true
-}
-
 // checkFunnelToken warns when generation_basis records a 퍼널= value that is
 // not one of the six fixed R1 tokens. Skips traces without a 퍼널= entry.
 func checkFunnelToken(r *Report, entity, id, basis string) {
-	v, ok := funnelFromBasis(basis)
+	v, ok := model.FunnelFromBasis(basis)
 	if !ok {
 		return
 	}
@@ -166,7 +151,7 @@ func checkFunnelBasisMissing(r *Report, entity, id, basis string) {
 	if strings.TrimSpace(basis) == "" {
 		return
 	}
-	if _, ok := funnelFromBasis(basis); ok {
+	if _, ok := model.FunnelFromBasis(basis); ok {
 		return
 	}
 	r.warn(entity, id, "generation_basis", "generation_basis_funnel_missing",
@@ -202,7 +187,7 @@ func checkFunnelStageMerged(r *Report, g *model.Generated, funnelByAdgroup map[s
 // adgroup_name은 업로드 파일에 그대로 실리므로 임의 명칭이 최종 산출물에 남으면
 // 안 된다(9차). 내부 근거 추적 필드인 generation_basis는 경고를 유지한다.
 func checkAdgroupNameFormat(r *Report, name string) {
-	slots := adgroupNameSlots(name)
+	slots := model.AdgroupNameSlots(name)
 	if len(slots) < 4 {
 		r.warn("adgroups", name, "adgroup_name", "adgroup_name_format",
 			fmt.Sprintf("adgroup_name %d슬롯 — 형식 상품/SKU_타깃_세부의도_구매여정(4슬롯 이상)", len(slots)))
@@ -242,29 +227,6 @@ func checkAdNameFormat(r *Report, name, adgroupName string, firstGroup map[strin
 	warned[prefix+"\x00"+adgroupName] = true
 	r.warn("ads", name, "ad_name", "ad_name_format",
 		fmt.Sprintf("프리픽스 %q가 광고그룹 %q와(과) 공유됩니다 — 광고그룹 코드로 구분 필요", prefix, first))
-}
-
-// adgroupNameSlots splits adgroup_name on "_" and drops a purely numeric dedup
-// suffix — 순번 접미는 내용 슬롯이 아니다(상품_타깃_구매여정_2는 3슬롯). 구매여정
-// 슬롯은 남은 마지막 슬롯이다.
-func adgroupNameSlots(name string) []string {
-	slots := strings.Split(name, "_")
-	if n := len(slots); n > 1 && isNumericSlot(slots[n-1]) {
-		slots = slots[:n-1]
-	}
-	return slots
-}
-
-func isNumericSlot(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
 }
 
 func checkURL(r *Report, id, field, raw string) {
